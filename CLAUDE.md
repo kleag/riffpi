@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-RiffPi (PyPI/import name `riffpi`; the GitHub repo itself stays `kleag/kleagmfx`) is a DIY guitar
+RiffPi (PyPI/import name `riffpi`; the GitHub repo is `kleag/riffpi`, formerly `kleag/kleagmfx`)
+is a DIY guitar
 multi-effect foot controller built around a Raspberry Pi 5 + Pisound sound card, running Guitarix
 as the effects engine. This repo holds:
 

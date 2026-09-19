@@ -1,11 +1,10 @@
-# Kleag's MFX
+# RiffPi
 
-This site documents the guitar multi-effect pedalboard I built around a Raspberry Pi, a
+This site documents [RiffPi](https://github.com/kleag/riffpi), the control daemon for
+**Kleag's MFX**, a guitar multi-effect pedalboard built around a Raspberry Pi, a
 [Pisound](https://blokas.io/pisound/) sound card, and [Guitarix](https://guitarix.org/) as the
-effects engine, housed in a repurposed wooden box. It's controlled by
-[RiffPi](https://github.com/kleag/kleagmfx), the Python daemon in this repository — foot
-switches, rotary encoders, a keypad, a joystick, and an expression pedal all drive Guitarix over
-MIDI.
+effects engine, housed in a repurposed wooden box. Foot switches, rotary encoders, a keypad, a
+joystick, and an expression pedal all drive Guitarix over MIDI.
 
 I'm currently at hardware version 2.2.1 of the pedal.
 
@@ -29,6 +28,6 @@ redistribute and modify it and make products using it under the terms of the
 WARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY AND FITNESS FOR A PARTICULAR
 PURPOSE — see the CERN-OHL-W v2 for applicable conditions.
 
-Source location: <https://github.com/kleag/kleagmfx>. As per CERN-OHL-W v2 section 4.1, should
+Source location: <https://github.com/kleag/riffpi>. As per CERN-OHL-W v2 section 4.1, should
 you produce hardware based on these sources, you must keep the source location visible on the
 external case of the pedal or other product you make using this documentation.

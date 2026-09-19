@@ -1,6 +1,6 @@
 site_name: RiffPi Documentation
-site_url: https://kleag.github.io/kleagmfx/
-repo_url: https://github.com/kleag/kleagmfx
+site_url: https://kleag.github.io/riffpi/
+repo_url: https://github.com/kleag/riffpi
 edit_uri: edit/main/docs/
 
 theme:

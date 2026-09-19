@@ -31,9 +31,9 @@ dependencies = [
 riffpi = "riffpi.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/kleag/kleagmfx"
-Repository = "https://github.com/kleag/kleagmfx"
-Documentation = "https://kleag.github.io/kleagmfx/"
+Homepage = "https://github.com/kleag/riffpi"
+Repository = "https://github.com/kleag/riffpi"
+Documentation = "https://kleag.github.io/riffpi/"
 
 [project.optional-dependencies]
 dev = ["ruff", "build", "twine"]
