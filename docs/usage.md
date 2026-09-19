@@ -29,9 +29,14 @@ tone, etc.) rather than on/off effects.
 | 3 | 22 |
 
 The **4th (preset) encoder** works differently: turning it moves to the next/previous preset
-within the current bank (a Program Change, one per detent). Its push button instead cycles
-through Guitarix preset banks **A → B → C → D → A...** (sends CC32 = bank index, then a
-bank-select Program Change). The other three encoders' buttons behave like extra foot switches.
+within the current bank (a Program Change, one per detent), wrapping around at however many
+presets are actually defined in that bank rather than clamping at 127. This wraparound is looked
+up live over Guitarix's JSON-RPC control port — start Guitarix with `guitarix -p 7777` (see
+`GUITARIX_RPC_HOST`/`GUITARIX_RPC_PORT` in `riffpi/daemon.py` to use a different port) for this
+to work; if that port isn't reachable, preset changes still work but fall back to an un-wrapped
+0-127 clamp. Its push button instead cycles through Guitarix preset banks **A → B → C → D →
+A...** (sends CC32 = bank index, then a bank-select Program Change). The other three encoders'
+buttons behave like extra foot switches.
 
 ## Keypad
 

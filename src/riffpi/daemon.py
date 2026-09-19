@@ -14,6 +14,7 @@ from adafruit_mcp230xx.mcp23017 import MCP23017
 from digitalio import Direction
 
 from .expression_pedal import ExpressionPedal
+from .guitarix_rpc import GuitarixRPC, GuitarixRPCError
 from .joystick import Joystick
 from .keypad import KeyPad
 from .mcp_button import MCPButton
@@ -30,6 +31,14 @@ ENCODER_CC_NUMBERS = [20, 21, 22, 23]  # MIDI CC for encoders
 # Guitarix preset navigation settings
 PRESET_BANK_CC = 32  # MIDI CC for preset bank selection
 PRESET_CHANGE_CC = 0  # MIDI CC for preset change
+
+# Guitarix's JSON-RPC control port, used only to look up how many presets exist in the
+# current bank so the preset encoder wraps correctly. Requires starting Guitarix with
+# `guitarix -p <port>` (matching GUITARIX_RPC_PORT below); if unreachable, preset changes
+# fall back to an un-wrapped 0-127 clamp (see change_preset()).
+GUITARIX_RPC_HOST = "127.0.0.1"
+GUITARIX_RPC_PORT = 7777
+gx_rpc = GuitarixRPC(GUITARIX_RPC_HOST, GUITARIX_RPC_PORT)
 
 # Keypad/Power LED (Keep original GPIO)
 POWER_LED_PIN = 11
@@ -56,9 +65,10 @@ def send_cc(cc, value):
 
 def set_preset_bank(bank_index):
     """Set the current preset bank (0-3 corresponding to A-D)"""
-    global current_preset_bank
+    global current_preset_bank, current_preset
     if 0 <= bank_index <= 3:
         current_preset_bank = bank_index
+        current_preset = 0
         # Send MIDI messages to change bank
         reset()  # Reset all effects
         send_cc(PRESET_BANK_CC, bank_index)
@@ -71,11 +81,34 @@ def change_bank(delta):
     new_bank = (current_preset_bank + delta) % 4
     set_preset_bank(new_bank)
 
+_gx_rpc_unreachable_logged = False
+
 def change_preset(delta):
-    """Move to the next/previous preset within the current bank (called when the
-    preset encoder is rotated)."""
-    global current_preset
-    current_preset = max(0, min(127, current_preset + delta))
+    """Move to the next/previous preset within the current bank (called when the preset
+    encoder is rotated), wrapping at however many presets Guitarix currently has defined
+    in that bank. The preset count/order is looked up live over Guitarix's JSON-RPC
+    control port (see GUITARIX_RPC_HOST/PORT); if that's unreachable (Guitarix wasn't
+    started with `-p <port>`), falls back to an un-wrapped 0-127 clamp."""
+    global current_preset, _gx_rpc_unreachable_logged
+    try:
+        bank_name = gx_rpc.get_current_bank()
+        presets = gx_rpc.get_bank_presets(bank_name)
+        preset_name = gx_rpc.get_current_preset()
+        _gx_rpc_unreachable_logged = False
+        if presets:
+            index = presets.index(preset_name) if preset_name in presets else current_preset % len(presets)
+            current_preset = (index + delta) % len(presets)
+        else:
+            current_preset = max(0, min(127, current_preset + delta))
+    except (OSError, GuitarixRPCError) as e:
+        if not _gx_rpc_unreachable_logged:
+            logger.warning(
+                f"Guitarix RPC unavailable ({e}); preset changes won't wrap at the "
+                f"bank's actual size. Start Guitarix with `-p {GUITARIX_RPC_PORT}` to fix this."
+            )
+            _gx_rpc_unreachable_logged = True
+        current_preset = max(0, min(127, current_preset + delta))
+
     reset()  # Reset all effects: presets define their own effect chain
     midi_out.send(mido.Message('program_change', program=current_preset))
     logger.info(f"Changing preset by {delta} -> preset {current_preset}")

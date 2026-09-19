@@ -88,7 +88,9 @@ Foot switch buttons and every encoder's built-in push button route through the s
 `handle_effect_toggle(idx)` callback. The **last** encoder is special-cased there as the
 preset-bank selector (cycles Guitarix banks A-D) instead of toggling an effect; turning that same
 encoder (handled separately, in `RotaryEncoder.handle_rotation`) instead changes preset within
-the current bank.
+the current bank, wrapping at however many presets that bank actually has — looked up live via
+`riffpi.guitarix_rpc.GuitarixRPC` (Guitarix's JSON-RPC control port, `guitarix -p PORT`), falling
+back to an un-wrapped 0-127 clamp if that port isn't reachable.
 
 `i2c_lock` (a `threading.Lock`) guards ADS1115 reads shared between the `Joystick` and
 `ExpressionPedal` threads, since both poll the same `ADS1115` instance concurrently.
@@ -98,6 +100,7 @@ the current bank.
 | Module | Responsibility |
 |---|---|
 | `riffpi.rotary_encoder` | Quadrature decoding (transition lookup table) → relative MIDI CC deltas |
+| `riffpi.guitarix_rpc` | Read-only JSON-RPC client (raw TCP, no HTTP) for Guitarix's `-p PORT` control port; used to size the preset-encoder wraparound |
 | `riffpi.keypad` | 4x4 matrix scan; digit-buffer preset entry; `*`/`#` as mouse left/right click |
 | `riffpi.joystick` | ADS1115 → dead-zone/power-curve shaped relative mouse motion (see [Usage](usage.md)) |
 | `riffpi.expression_pedal` | ADS1115 → median-smoothed MIDI CC24 |

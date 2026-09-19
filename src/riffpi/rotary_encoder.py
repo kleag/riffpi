@@ -35,6 +35,12 @@ class RotaryEncoder:
     # 10 -> 00 (0x8)
     CCW_transitions = {0b0001, 0b0111, 0b1110, 0b1000}
 
+    # A full physical detent is 4 electrical half-steps (00 -> 10 -> 11 -> 01 -> 00, or the
+    # reverse), but both pins only rest HIGH (0b11) between detents. Firing on every valid
+    # half-step call handle_rotation() 4x per detent (e.g. a single click jumping a preset
+    # by 4 instead of 1); only fire once the state machine lands back on this rest state.
+    DETENT_STATE = 0b11
+
     def __init__(
         self,
         midi_out,
@@ -107,16 +113,16 @@ class RotaryEncoder:
             if transition in RotaryEncoder.CW_transitions:
                 # logger.debug(f"Encoder {self.name} Rotated → (clockwise)")
                 self.last_state = current_state # Update state after a valid step
-                direction = 1
-                # logger.info(f"{encoder['name']} turned {direction}, send to {encoder['cc']}")
-                self.handle_rotation(direction)
+                # Only the half-step that lands back on the rest position completes a
+                # full physical detent; the others just advance the state machine.
+                if current_state == RotaryEncoder.DETENT_STATE:
+                    self.handle_rotation(1)
 
             elif transition in RotaryEncoder.CCW_transitions:
                 # logger.debug(f"Encoder {self.name} Rotated → (counterclockwise)")
                 self.last_state = current_state # Update state after a valid step
-                direction = -1
-                # logger.debug(f"{encoder['name']} turned {direction}, send to {encoder['cc']}")
-                self.handle_rotation(direction)
+                if current_state == RotaryEncoder.DETENT_STATE:
+                    self.handle_rotation(-1)
 
             # 6. Optional: If the transition is invalid (i.e., due to bounce/noise),
             #    we generally ignore it and wait for a valid state.

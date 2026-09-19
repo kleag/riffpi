@@ -126,7 +126,11 @@ logic independently and are **not** kept in sync automatically.
   separately, in `RotaryEncoder.handle_rotation` via the `on_preset_change` callback passed at
   construction in `daemon.py`, and calls `change_preset` (Program Change, ±1 within the current
   bank) — so the preset encoder's click (bank) and rotation (preset) are independent actions,
-  not a hold-to-modify combo.
+  not a hold-to-modify combo. `change_preset` wraps at however many presets the current bank
+  actually has, looked up live over Guitarix's JSON-RPC control port via the module-level
+  `gx_rpc` (a `guitarix_rpc.GuitarixRPC`, see `GUITARIX_RPC_HOST`/`GUITARIX_RPC_PORT`) — requires
+  starting Guitarix with `-p <port>`; if that's unreachable it falls back to an un-wrapped 0-127
+  clamp (logged once via `_gx_rpc_unreachable_logged`, not spammed every rotation tick).
 - MIDI CC numbers are the integration contract with Guitarix: `SWITCH_CC=64` (+idx per foot
   switch), `ENCODER_CC_NUMBERS=[20,21,22,23]`, `PRESET_BANK_CC=32`, `PRESET_CHANGE_CC=0`,
   expression pedal `MIDI_CC_NUMBER=24`. The `midi_input_thread` listens on the same virtual port
@@ -146,11 +150,20 @@ block for standalone hardware testing of just that module (only usable when run 
 not through the installed console script).
 
 - `rotary_encoder.py`: quadrature decoding via a transition lookup table (`CW_transitions`/
-  `CCW_transitions` — 4-bit keys of `(last_state<<2)|current_state`); each valid step calls
-  `handle_rotation(direction)`, which sends a relative MIDI CC delta, except for the preset
-  encoder (`is_preset_encoder=True`), which instead calls its `on_preset_change` callback
-  (`daemon.change_preset`) — the encoder's own push button is unrelated to this and is handled,
-  like every other button, through `handle_effect_toggle` in `daemon.py`.
+  `CCW_transitions` — 4-bit keys of `(last_state<<2)|current_state`). A full physical detent is 4
+  electrical half-steps that both rest at `DETENT_STATE = 0b11` (both pins pulled high) between
+  clicks, so `handle_rotation(direction)` — which sends a relative MIDI CC delta, except for the
+  preset encoder (`is_preset_encoder=True`), which instead calls its `on_preset_change` callback
+  (`daemon.change_preset`) — only fires once `current_state` lands back on `DETENT_STATE`, not on
+  every intermediate half-step (firing on every half-step made one physical click move 4 steps).
+  The preset encoder's own push button is unrelated to this and is handled, like every other
+  button, through `handle_effect_toggle` in `daemon.py`.
+- `guitarix_rpc.py`: `GuitarixRPC`, a minimal client for Guitarix's JSON-RPC control port
+  (`guitarix -p PORT`; plain newline-terminated JSON over a raw TCP socket, not HTTP). Only used
+  by `daemon.change_preset` to look up the current bank's preset list/count via
+  `get_parameter(["system.current_bank"/"system.current_preset"])` and `get_bank([bank_name])`.
+  Reconnects lazily and backs off for `RECONNECT_BACKOFF` seconds after a failure so a
+  never-started RPC server doesn't stall every rotation tick with a fresh connect attempt.
 - `keypad.py`: 4x4 matrix scan; digits accumulate into a preset number with a
   `DIGIT_SEQUENCE_TIMEOUT` debounce window, `A`-`D` select preset banks, `*`/`#` emit virtual
   mouse left/right clicks via `uinput`.
