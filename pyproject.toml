@@ -12,9 +12,12 @@ requires-python = ">=3.11"
 dependencies = [
     # Raspberry Pi I2C/GPIO access (board, busio, digitalio)
     "Adafruit-Blinka>=8.66.2",
-    "adafruit-circuitpython-ads1x15>=2.4.2",
+    # 3.0.0 dropped the module-level P0-P3 pin constants this code uses (moved to a Pin class) -
+    # cap below that until the call sites are ported to the new API.
+    "adafruit-circuitpython-ads1x15>=2.4.2,<3.0.0",
     "adafruit-circuitpython-mcp230xx>=2.5.18",
     "gpiozero>=2.0.1",
+    "lgpio>=0.2.2.0",  # Blinka's GPIO backend on the Pi 5 (bcm2712)
 
     # MIDI I/O to Guitarix
     "mido>=1.2.10",
