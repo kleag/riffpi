@@ -146,7 +146,13 @@ class RotaryEncoder:
 
     def poll_thread(self):
         while True:
-            self.read_encoder_state_machine()
+            try:
+                self.read_encoder_state_machine()
+            except OSError as e:
+                # Transient I2C bus glitch (e.g. "Remote I/O error"). Skip this tick
+                # rather than letting the exception kill the thread for the process's
+                # remaining lifetime.
+                logger.warning(f"RotaryEncoder {self.name} I2C read failed: {e}")
             time.sleep(0.001)
 
 

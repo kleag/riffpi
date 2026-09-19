@@ -40,23 +40,28 @@ class ExpressionPedal:
     def poll(self):
         self._running = True
         while self._running:
-            with self.lock:
-                voltage = self.chan.voltage
+            try:
+                with self.lock:
+                    voltage = self.chan.voltage
 
-            # Map voltage to 0-127 (MIDI Range)
-            raw_percent = ((voltage - V_MIN) * 127) / (V_MAX - V_MIN)
-            clamped = max(0, min(127, int(raw_percent)))
+                # Map voltage to 0-127 (MIDI Range)
+                raw_percent = ((voltage - V_MIN) * 127) / (V_MAX - V_MIN)
+                clamped = max(0, min(127, int(raw_percent)))
 
-            # Smoothing
-            self.readings.pop(0)
-            self.readings.append(clamped)
-            smoothed_val = int(statistics.median(self.readings))
-            logger.debug(f"Pedal: {voltage};\t{clamped};\t{smoothed_val}")
+                # Smoothing
+                self.readings.pop(0)
+                self.readings.append(clamped)
+                smoothed_val = int(statistics.median(self.readings))
+                logger.debug(f"Pedal: {voltage};\t{clamped};\t{smoothed_val}")
 
-            # Only send MIDI message if the value has actually changed
-            if abs(smoothed_val - self._current_midi_val) >= 4:
-                self._current_midi_val = smoothed_val
-                self.send_midi(smoothed_val)
+                # Only send MIDI message if the value has actually changed
+                if abs(smoothed_val - self._current_midi_val) >= 4:
+                    self._current_midi_val = smoothed_val
+                    self.send_midi(smoothed_val)
+            except OSError as e:
+                # Transient I2C bus glitch (e.g. "Remote I/O error"). Skip this tick
+                # rather than letting the exception kill the thread.
+                logger.warning(f"ExpressionPedal I2C read failed: {e}")
 
             time.sleep(0.01)
 

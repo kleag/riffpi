@@ -146,36 +146,44 @@ class Joystick:
 
     def poll_joystick(self):
         while True:
-            # 1. Joystick Analog Control (Reads from ADS1115)
-            x, y = self.read_joystick()
-            # logger.debug(f"joystick {x},{y}")
-            dx, dy = self.calculate_speed(x, y)
-            if dx != 0 or dy != 0:
-                # logger.debug(f"joystick move: {dx},{dy}")
-                try:
-                    self.device.emit(uinput.REL_X, int(-dx))
-                    self.device.emit(uinput.REL_Y, int(-dy))
-                except NameError as e: # Handle case where uinput device failed to initialize
-                    logger.warn(f"Joystick.poll_joystick uinput failure: {e}")
+            try:
+                # 1. Joystick Analog Control (Reads from ADS1115)
+                x, y = self.read_joystick()
+                # logger.debug(f"joystick {x},{y}")
+                dx, dy = self.calculate_speed(x, y)
+                if dx != 0 or dy != 0:
+                    # logger.debug(f"joystick move: {dx},{dy}")
+                    try:
+                        self.device.emit(uinput.REL_X, int(-dx))
+                        self.device.emit(uinput.REL_Y, int(-dy))
+                    except NameError as e: # Handle case where uinput device failed to initialize
+                        logger.warn(f"Joystick.poll_joystick uinput failure: {e}")
 
-            # 2. Joystick Button (Reads from MCP23017)
-            switch_state = self.joystick_sw.value  # True = not pressed
-            if switch_state != self.last_switch_state:
-                uinput_state = 1 if not switch_state else 0
-                # logger.debug(f"joystick button new state: {uinput_state}")
-                try:
-                    self.device.emit(uinput.BTN_MIDDLE, uinput_state)
-                except NameError as e:
-                    logger.error(f"Name error in joystick button: {e}")
+                # 2. Joystick Button (Reads from MCP23017)
+                switch_state = self.joystick_sw.value  # True = not pressed
+                if switch_state != self.last_switch_state:
+                    uinput_state = 1 if not switch_state else 0
+                    # logger.debug(f"joystick button new state: {uinput_state}")
+                    try:
+                        self.device.emit(uinput.BTN_MIDDLE, uinput_state)
+                    except NameError as e:
+                        logger.error(f"Name error in joystick button: {e}")
 
-            self.last_switch_state = switch_state
-            if self.debug:
-                status_text = (
-                    f"[bold blue]X:[/bold blue] {self.joystick_x_axis.voltage:+5.2f}V ({x:+5.2f}) [dim]dx={dx:+6.2f}[/dim] | "
-                    f"[bold magenta]Y:[/bold magenta] {self.joystick_y_axis.voltage:+5.2f}V ({y:+5.2f}) [dim]dy={dy:+6.2f}[/dim] | "
-                    f"[bold yellow]Switch:[/bold yellow] {'Released' if switch_state else 'Pressed'}"
-                )
-                self.console.print(status_text, end="\r")
+                self.last_switch_state = switch_state
+                if self.debug:
+                    status_text = (
+                        f"[bold blue]X:[/bold blue] {self.joystick_x_axis.voltage:+5.2f}V "
+                        f"({x:+5.2f}) [dim]dx={dx:+6.2f}[/dim] | "
+                        f"[bold magenta]Y:[/bold magenta] {self.joystick_y_axis.voltage:+5.2f}V "
+                        f"({y:+5.2f}) [dim]dy={dy:+6.2f}[/dim] | "
+                        f"[bold yellow]Switch:[/bold yellow] "
+                        f"{'Released' if switch_state else 'Pressed'}"
+                    )
+                    self.console.print(status_text, end="\r")
+            except OSError as e:
+                # Transient I2C bus glitch (e.g. "Remote I/O error"). Skip this tick
+                # rather than letting the exception kill the thread.
+                logger.warning(f"Joystick I2C read failed: {e}")
             time.sleep(Joystick.LOOP_DELAY)
 
 

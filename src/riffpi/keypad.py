@@ -96,61 +96,66 @@ class KeyPad:
 
     def keypad_thread(self):
         while True:
-            # Keypad Scan
-            key = self.scan_keypad()
-            now = time.monotonic()
+            try:
+                # Keypad Scan
+                key = self.scan_keypad()
+                now = time.monotonic()
 
-            # Commit pending preset if timeout expired
-            if self.pending_preset and (now - self.last_digit_time) > DIGIT_SEQUENCE_TIMEOUT:
-                try:
-                    preset = int(self.digit_buffer)
-                    self.set_preset(preset)
-                finally:
-                    self.digit_buffer = ""
-                    self.pending_preset = False
+                # Commit pending preset if timeout expired
+                if self.pending_preset and (now - self.last_digit_time) > DIGIT_SEQUENCE_TIMEOUT:
+                    try:
+                        preset = int(self.digit_buffer)
+                        self.set_preset(preset)
+                    finally:
+                        self.digit_buffer = ""
+                        self.pending_preset = False
 
-            if key and key != self.last_key:
-                # logger.info(f"Key pressed: {key}")
-                if key in 'ABCD':
-                    self.digit_buffer = ""
-                    self.pending_preset = False
-                    self.set_bank(ord(key) - ord('A'))
-                elif key in '0123456789':
-                    if (now - self.last_digit_time) <= DIGIT_SEQUENCE_TIMEOUT:
-                        self.digit_buffer += key
-                    else:
-                        self.digit_buffer = key
+                if key and key != self.last_key:
+                    # logger.info(f"Key pressed: {key}")
+                    if key in 'ABCD':
+                        self.digit_buffer = ""
+                        self.pending_preset = False
+                        self.set_bank(ord(key) - ord('A'))
+                    elif key in '0123456789':
+                        if (now - self.last_digit_time) <= DIGIT_SEQUENCE_TIMEOUT:
+                            self.digit_buffer += key
+                        else:
+                            self.digit_buffer = key
 
-                    self.last_digit_time = now
-                    self.pending_preset = True
-                elif key == '*' and self.mouse:
-                    if not self.left_state:
-                        logger.debug("Left button pressed")
-                        self.mouse.emit(uinput.BTN_LEFT, 1)
-                        self.mouse.syn() # Ensure the event is flushed to the OS immediately
-                        self.left_state = True
-                elif key == '#' and self.mouse:
-                    if not self.right_state:
-                        logger.debug("Right button pressed")
-                        self.mouse.emit(uinput.BTN_RIGHT, 1)
-                        self.mouse.syn() # Ensure the event is flushed to the OS immediately
-                        self.right_state = True
-                self.last_key = key
+                        self.last_digit_time = now
+                        self.pending_preset = True
+                    elif key == '*' and self.mouse:
+                        if not self.left_state:
+                            logger.debug("Left button pressed")
+                            self.mouse.emit(uinput.BTN_LEFT, 1)
+                            self.mouse.syn() # Ensure the event is flushed to the OS immediately
+                            self.left_state = True
+                    elif key == '#' and self.mouse:
+                        if not self.right_state:
+                            logger.debug("Right button pressed")
+                            self.mouse.emit(uinput.BTN_RIGHT, 1)
+                            self.mouse.syn() # Ensure the event is flushed to the OS immediately
+                            self.right_state = True
+                    self.last_key = key
 
-            elif key != '*' and self.left_state:
-                logger.debug("Left button released")
-                self.mouse.emit(uinput.BTN_LEFT, 0)
-                self.mouse.syn()
-                self.left_state = False
+                elif key != '*' and self.left_state:
+                    logger.debug("Left button released")
+                    self.mouse.emit(uinput.BTN_LEFT, 0)
+                    self.mouse.syn()
+                    self.left_state = False
 
-            elif key != '#' and self.right_state:
-                logger.debug("Right button released")
-                self.mouse.emit(uinput.BTN_RIGHT, 0)
-                self.mouse.syn()
-                self.right_state = False
+                elif key != '#' and self.right_state:
+                    logger.debug("Right button released")
+                    self.mouse.emit(uinput.BTN_RIGHT, 0)
+                    self.mouse.syn()
+                    self.right_state = False
 
-            elif key is None:
-                self.last_key = None
+                elif key is None:
+                    self.last_key = None
+            except OSError as e:
+                # Transient I2C bus glitch (e.g. "Remote I/O error"). Skip this tick
+                # rather than letting the exception kill the thread.
+                logger.warning(f"KeyPad I2C read failed: {e}")
 
             time.sleep(0.01)
 

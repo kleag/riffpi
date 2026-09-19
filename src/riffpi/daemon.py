@@ -124,7 +124,12 @@ def buttons_thread():
     while True:
         # MCP Button Scan
         for i, btn in enumerate(buttons):
-            btn.check(i)
+            try:
+                btn.check(i)
+            except OSError as e:
+                # Transient I2C bus glitch (e.g. "Remote I/O error"). Skip this button
+                # this tick rather than letting the exception kill the whole thread.
+                logger.warning(f"Button {i} I2C read failed: {e}")
         time.sleep(0.01)
 
 # --- Main Thread Logic ---
