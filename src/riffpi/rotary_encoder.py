@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-import time
-import mido
 import logging
-
-from adafruit_mcp230xx.mcp23017 import MCP23017
-from digitalio import Direction, Pull
+import time
 from signal import pause
 
-from mcp_button import MCPButton
+import mido
+from adafruit_mcp230xx.mcp23017 import MCP23017
+from digitalio import Direction, Pull
+
+from .mcp_button import MCPButton
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,17 @@ class RotaryEncoder:
     # 10 -> 00 (0x8)
     CCW_transitions = {0b0001, 0b0111, 0b1110, 0b1000}
 
-    def __init__(self, midi_out, mcp: MCP23017, name: str, clk_pin: int, dt_pin: int, sw_pin: int, cc: int):
+    def __init__(
+        self,
+        midi_out,
+        mcp: MCP23017,
+        name: str,
+        clk_pin: int,
+        dt_pin: int,
+        sw_pin: int,
+        cc: int,
+        is_preset_encoder: bool = False,
+    ):
         logger.info(f"RotaryEncoder {name}, clk: {clk_pin}, dt: {dt_pin}, sw: {sw_pin}, cc: {cc}")
         self.midi_out = midi_out
         self.clk = mcp.get_pin(clk_pin)
@@ -53,12 +63,20 @@ class RotaryEncoder:
         # self.last_sw = sw.value
         self.midi_value = SWITCH_CC
         self.button = MCPButton(mcp, sw_pin)
+        self.is_preset_encoder = is_preset_encoder
         self.button.when_pressed = self.button_pressed
         self.send_cc(self.midi_value)
 
-
     def button_pressed(self):
         logger.debug(f"RotaryEncoder {self.name} button_pressed")
+
+
+    def preset_button_pressed(self):
+        """Special handler for preset bank switching"""
+        logger.info(f"Preset encoder {self.name} button pressed - switching bank")
+        # This will be handled by the main program
+        # We'll send a message to indicate the button was pressed
+        pass
 
 
     def update_from_midi(self, value):
@@ -134,9 +152,10 @@ class RotaryEncoder:
 
 # === Main ===
 if __name__ == "__main__":
+    import threading
+
     import board
     import busio
-    import threading
 
     i2c = busio.I2C(board.SCL, board.SDA)
     mcp = MCP23017(i2c, address=0x20)

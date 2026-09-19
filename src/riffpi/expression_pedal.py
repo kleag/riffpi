@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-import adafruit_ads1x15.ads1115 as ADS
-import board
-import busio
 import logging
-import mido
 import statistics
 import threading
 import time
-
-from adafruit_ads1x15.analog_in import AnalogIn
 from signal import pause
+
+import adafruit_ads1x15.ads1115 as ADS
+import board
+import busio
+import mido
+from adafruit_ads1x15.analog_in import AnalogIn
 
 # The actual voltages measured at the physical limits of the pedal
 V_MIN = 0.006

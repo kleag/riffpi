@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-import board
-import busio
-import time
-import mido
-import queue
 import logging
+import queue
 import threading
-import uinput
-
-from adafruit_mcp230xx.mcp23017 import MCP23017
-from digitalio import Direction, Pull
+import time
 from signal import pause
 from typing import List
+
+import board
+import busio
+import mido
+import uinput
+from adafruit_mcp230xx.mcp23017 import MCP23017
+from digitalio import Direction, Pull
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -32,7 +32,14 @@ class KeyPad:
         ['*', '0', '#', 'D']
     ]
 
-    def __init__(self, task_queue: queue.Queue, midi_out, mcp: MCP23017, row_pins: List[int] = KEYPAD_ROW_PINS, col_pins: List[int] = KEYPAD_COL_PINS):
+    def __init__(
+        self,
+        task_queue: queue.Queue,
+        midi_out,
+        mcp: MCP23017,
+        row_pins: List[int] = KEYPAD_ROW_PINS,
+        col_pins: List[int] = KEYPAD_COL_PINS,
+    ):
         self.task_queue = task_queue
         self.last_key = None
         self.midi_out = midi_out
@@ -52,8 +59,6 @@ class KeyPad:
         except Exception as e:
             logger.error(f"KeyPad uinput init failed: {e}")
             self.mouse = None
-
-        kp_pins = row_pins + col_pins
 
         self.kp_rows = [self.mcp.get_pin(i) for i in row_pins]
         self.kp_cols = [self.mcp.get_pin(i) for i in col_pins]
@@ -120,26 +125,26 @@ class KeyPad:
                     self.pending_preset = True
                 elif key == '*' and self.mouse:
                     if not self.left_state:
-                        logger.debug(f"Left button pressed")
+                        logger.debug("Left button pressed")
                         self.mouse.emit(uinput.BTN_LEFT, 1)
                         self.mouse.syn() # Ensure the event is flushed to the OS immediately
                         self.left_state = True
                 elif key == '#' and self.mouse:
                     if not self.right_state:
-                        logger.debug(f"Right button pressed")
+                        logger.debug("Right button pressed")
                         self.mouse.emit(uinput.BTN_RIGHT, 1)
                         self.mouse.syn() # Ensure the event is flushed to the OS immediately
                         self.right_state = True
                 self.last_key = key
 
             elif key != '*' and self.left_state:
-                logger.debug(f"Left button released")
+                logger.debug("Left button released")
                 self.mouse.emit(uinput.BTN_LEFT, 0)
                 self.mouse.syn()
                 self.left_state = False
 
             elif key != '#' and self.right_state:
-                logger.debug(f"Right button released")
+                logger.debug("Right button released")
                 self.mouse.emit(uinput.BTN_RIGHT, 0)
                 self.mouse.syn()
                 self.right_state = False

@@ -9,3 +9,6 @@ fp-info-cache
 multieff.dsn
 multieff.ses
 *-backups
+site/
+dist/
+*.egg-info/
