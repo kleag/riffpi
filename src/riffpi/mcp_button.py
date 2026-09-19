@@ -17,11 +17,6 @@ class MCPButton:
         self.last_state = not self.pin.value # Active Low
         self.when_pressed = None
 
-    @property
-    def is_pressed(self) -> bool:
-        """Current held state, refreshed each time `check()` runs (active low)."""
-        return self.last_state
-
     def check(self, idx: int):
         current_state = not self.pin.value
         # logger.info(f"MCPButton.check {idx}, {self.when_pressed}: {current_state} / {self.last_state}")

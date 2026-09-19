@@ -29,11 +29,9 @@ tone, etc.) rather than on/off effects.
 | 3 | 22 |
 
 The **4th (preset) encoder** works differently: turning it moves to the next/previous preset
-within the current bank (a Program Change, one per detent). Turning it **while holding its push
-button down** instead moves to the next/previous preset bank, wrapping **A ↔ B ↔ C ↔ D** (sends
-CC32 = bank index, then a bank-select Program Change). Clicking the button without turning the
-encoder does nothing — the button is only a modifier for rotation. The other three encoders'
-buttons behave like extra foot switches.
+within the current bank (a Program Change, one per detent). Its push button instead cycles
+through Guitarix preset banks **A → B → C → D → A...** (sends CC32 = bank index, then a
+bank-select Program Change). The other three encoders' buttons behave like extra foot switches.
 
 ## Keypad
 
@@ -75,6 +73,6 @@ a rolling median filter to avoid jitter.
 |---|---|
 | Foot switches 1-4 | 64-67 |
 | Rotary encoders 1-3 | 20-22 |
-| Preset encoder: preset change | Program Change |
-| Preset encoder (held): bank change | 32 (bank), Program Change (preset within bank) |
+| Preset encoder: preset change (turn) | Program Change |
+| Preset encoder: bank change (click) | 32 (bank), Program Change (preset within bank) |
 | Expression pedal | 24 |

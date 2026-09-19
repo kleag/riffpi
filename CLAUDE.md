@@ -121,13 +121,12 @@ logic independently and are **not** kept in sync automatically.
   (`[4 foot switches] + [4 encoder buttons]`, in that order). `PRESET_ENCODER_INDEX` is computed
   in `main()` as the buttons-list position of the **last encoder's** button (not a hardcoded
   literal — it was hardcoded to `3` at one point, which actually pointed at the 4th foot switch
-  instead; don't reintroduce that). `handle_effect_toggle` is a no-op for that index — the last
-  encoder's button isn't a toggle, it's a modifier read directly by that encoder's own rotation
-  handling (`RotaryEncoder.handle_rotation`, wired via the `on_preset_change`/`on_bank_change`
-  callbacks passed at construction in `daemon.py`): turning the encoder with the button released
-  calls `change_preset` (Program Change, ±1 within the current bank), turning it while the
-  button is held calls `change_bank` (cycles Guitarix preset banks A-D). A plain click with no
-  rotation does nothing.
+  instead; don't reintroduce that). That button is special-cased to cycle Guitarix preset banks
+  A-D (`change_bank`) instead of toggling an effect. Turning that same encoder is handled
+  separately, in `RotaryEncoder.handle_rotation` via the `on_preset_change` callback passed at
+  construction in `daemon.py`, and calls `change_preset` (Program Change, ±1 within the current
+  bank) — so the preset encoder's click (bank) and rotation (preset) are independent actions,
+  not a hold-to-modify combo.
 - MIDI CC numbers are the integration contract with Guitarix: `SWITCH_CC=64` (+idx per foot
   switch), `ENCODER_CC_NUMBERS=[20,21,22,23]`, `PRESET_BANK_CC=32`, `PRESET_CHANGE_CC=0`,
   expression pedal `MIDI_CC_NUMBER=24`. The `midi_input_thread` listens on the same virtual port
@@ -149,9 +148,9 @@ not through the installed console script).
 - `rotary_encoder.py`: quadrature decoding via a transition lookup table (`CW_transitions`/
   `CCW_transitions` — 4-bit keys of `(last_state<<2)|current_state`); each valid step calls
   `handle_rotation(direction)`, which sends a relative MIDI CC delta, except for the preset
-  encoder (`is_preset_encoder=True`), which instead calls its `on_preset_change`/`on_bank_change`
-  callback depending on whether `self.button.is_pressed` (an `MCPButton.is_pressed` property,
-  refreshed by the shared `buttons_thread` poll) is currently held.
+  encoder (`is_preset_encoder=True`), which instead calls its `on_preset_change` callback
+  (`daemon.change_preset`) — the encoder's own push button is unrelated to this and is handled,
+  like every other button, through `handle_effect_toggle` in `daemon.py`.
 - `keypad.py`: 4x4 matrix scan; digits accumulate into a preset number with a
   `DIGIT_SEQUENCE_TIMEOUT` debounce window, `A`-`D` select preset banks, `*`/`#` emit virtual
   mouse left/right clicks via `uinput`.

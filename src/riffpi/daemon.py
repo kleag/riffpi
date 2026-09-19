@@ -67,13 +67,13 @@ def set_preset_bank(bank_index):
 
 def change_bank(delta):
     """Move to the next/previous preset bank, wrapping A-D (called when the preset
-    encoder is rotated while its button is held)."""
+    encoder's button is clicked)."""
     new_bank = (current_preset_bank + delta) % 4
     set_preset_bank(new_bank)
 
 def change_preset(delta):
     """Move to the next/previous preset within the current bank (called when the
-    preset encoder is rotated with its button released)."""
+    preset encoder is rotated)."""
     global current_preset
     current_preset = max(0, min(127, current_preset + delta))
     reset()  # Reset all effects: presets define their own effect chain
@@ -82,9 +82,10 @@ def change_preset(delta):
 
 # --- BUTTON HANDLERS ---
 def handle_effect_toggle(idx):
-    # The preset encoder's button only acts as a modifier for its rotation (see
-    # RotaryEncoder.handle_rotation); a plain click with no rotation does nothing.
-    if idx == PRESET_ENCODER_INDEX:
+    # Special handling for the preset encoder (last one)
+    if idx == PRESET_ENCODER_INDEX:  # Last encoder is our special preset encoder
+        # Cycle through banks A-D (0-3) on click
+        change_bank(1)
         return
     # Standard effect toggle behavior
     # logger.info(f"handle_effect_toggle {idx}")
@@ -221,7 +222,6 @@ def run():
         encoder = RotaryEncoder(
             midi_out, mcp, name, clk_pin, dt_pin, sw_pin, cc, is_preset,
             on_preset_change=change_preset if is_preset else None,
-            on_bank_change=change_bank if is_preset else None,
         )
         encoders.append(encoder)
         buttons.append(encoder.button)
