@@ -65,18 +65,20 @@ automated verification without a self-hosted Pi runner.
 - `docs/` is an MkDocs (Material theme) site, configured by `mkdocs.yml`.
   `.github/workflows/docs.yml` runs `mkdocs gh-deploy --force`, but only on pushes to `main` that
   touch `docs/`, `mkdocs.yml`, or `README.md`.
-- `.github/workflows/release.yml` builds and publishes to PyPI on GitHub Release, via Trusted
-  Publishing (OIDC) — no stored token. Requires the `riffpi` PyPI project to have this repo
-  registered as a trusted publisher (a one-time manual step on pypi.org, done as a "pending
-  publisher" before the project existed — PyPI creates the project on the first successful
-  publish).
+- `.github/workflows/release.yml` builds and publishes to PyPI via Trusted Publishing (OIDC) —
+  no stored token. Requires the `riffpi` PyPI project to have this repo registered as a trusted
+  publisher (a one-time manual step on pypi.org, done as a "pending publisher" before the
+  project existed — PyPI creates the project on the first successful publish).
 - Version bumps use `bumpver` (`[tool.bumpver]` in `pyproject.toml`), which commits, tags
   (bare `MAJOR.MINOR.PATCH`, no `v` prefix), and pushes — it does **not** create a GitHub
   Release itself. `.github/workflows/tag-release.yml` watches for those tag pushes and runs
-  `gh release create` to publish a GitHub Release from the tag, which is what then fires
-  `release.yml`'s `release: published` trigger. So the full chain is: `bumpver update` →
-  tag pushed → `tag-release.yml` creates the GitHub Release → `release.yml` builds and
-  publishes to PyPI.
+  `gh release create` (using the default `GITHUB_TOKEN`) to publish a GitHub Release from the
+  tag. `release.yml` is triggered off `workflow_run: tag-release` completing, **not**
+  `release: published` — a release created via `GITHUB_TOKEN` doesn't fire other event
+  triggers (GitHub's anti-recursion rule), so chaining on `release: published` silently never
+  ran. `release.yml`'s `build` job checks out `github.event.workflow_run.head_sha` to build the
+  tagged commit. Full chain: `bumpver update` → tag pushed → `tag-release.yml` creates the
+  GitHub Release → its completion triggers `release.yml` → builds and publishes to PyPI.
 
 ## Code architecture
 

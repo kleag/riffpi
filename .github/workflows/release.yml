@@ -1,14 +1,22 @@
 name: release
 
 on:
-  release:
-    types: [published]
+  # Not `release: published`: tag-release.yml creates that release using the default
+  # GITHUB_TOKEN, and GitHub's anti-recursion rule means events created via GITHUB_TOKEN
+  # don't trigger other workflows. workflow_run isn't subject to that restriction, so we
+  # chain off tag-release.yml's completion instead.
+  workflow_run:
+    workflows: ["tag-release"]
+    types: [completed]
 
 jobs:
   build:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: actions/setup-python@v5
         with:
