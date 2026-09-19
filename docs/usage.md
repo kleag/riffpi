@@ -18,21 +18,22 @@ loading a preset), the LED updates to match automatically.
 
 ## Rotary encoders
 
-4 rotary encoders send relative MIDI CC changes as they're turned — each detent moves its CC
-value by ±5 (clamped to 0-127). This is meant for continuous Guitarix parameters (gain, tone,
-etc.) rather than on/off effects.
+The first 3 rotary encoders send relative MIDI CC changes as they're turned — each detent moves
+its CC value by ±5 (clamped to 0-127). This is meant for continuous Guitarix parameters (gain,
+tone, etc.) rather than on/off effects.
 
 | Encoder | MIDI CC |
 |---|---|
 | 1 | 20 |
 | 2 | 21 |
 | 3 | 22 |
-| 4 (preset) | 23 |
 
-Each encoder also has a push button. The **last encoder's button** is special: instead of
-toggling an effect, it cycles through Guitarix preset banks **A → B → C → D → A...** (sends CC32
-= bank index, then a bank-select Program Change). The other three encoders' buttons behave like
-extra foot switches.
+The **4th (preset) encoder** works differently: turning it moves to the next/previous preset
+within the current bank (a Program Change, one per detent). Turning it **while holding its push
+button down** instead moves to the next/previous preset bank, wrapping **A ↔ B ↔ C ↔ D** (sends
+CC32 = bank index, then a bank-select Program Change). Clicking the button without turning the
+encoder does nothing — the button is only a modifier for rotation. The other three encoders'
+buttons behave like extra foot switches.
 
 ## Keypad
 
@@ -73,6 +74,7 @@ a rolling median filter to avoid jitter.
 | Control | MIDI CC(s) |
 |---|---|
 | Foot switches 1-4 | 64-67 |
-| Rotary encoders 1-4 | 20-23 |
-| Preset bank select | 32 (bank), Program Change (preset within bank) |
+| Rotary encoders 1-3 | 20-22 |
+| Preset encoder: preset change | Program Change |
+| Preset encoder (held): bank change | 32 (bank), Program Change (preset within bank) |
 | Expression pedal | 24 |

@@ -45,6 +45,8 @@ class RotaryEncoder:
         sw_pin: int,
         cc: int,
         is_preset_encoder: bool = False,
+        on_preset_change=None,
+        on_bank_change=None,
     ):
         logger.info(f"RotaryEncoder {name}, clk: {clk_pin}, dt: {dt_pin}, sw: {sw_pin}, cc: {cc}")
         self.midi_out = midi_out
@@ -64,6 +66,10 @@ class RotaryEncoder:
         self.midi_value = SWITCH_CC
         self.button = MCPButton(mcp, sw_pin)
         self.is_preset_encoder = is_preset_encoder
+        # Preset encoder only: rotating while the button is held changes bank instead of
+        # preset. Ignored by non-preset encoders.
+        self.on_preset_change = on_preset_change
+        self.on_bank_change = on_bank_change
         self.button.when_pressed = self.button_pressed
         self.send_cc(self.midi_value)
 
@@ -106,14 +112,14 @@ class RotaryEncoder:
                 self.last_state = current_state # Update state after a valid step
                 direction = 1
                 # logger.info(f"{encoder['name']} turned {direction}, send to {encoder['cc']}")
-                self.increment_cc_value(direction)
+                self.handle_rotation(direction)
 
             elif transition in RotaryEncoder.CCW_transitions:
                 # logger.debug(f"Encoder {self.name} Rotated → (counterclockwise)")
                 self.last_state = current_state # Update state after a valid step
                 direction = -1
                 # logger.debug(f"{encoder['name']} turned {direction}, send to {encoder['cc']}")
-                self.increment_cc_value(direction)
+                self.handle_rotation(direction)
 
             # 6. Optional: If the transition is invalid (i.e., due to bounce/noise),
             #    we generally ignore it and wait for a valid state.
@@ -128,6 +134,18 @@ class RotaryEncoder:
                 # logger.debug(f"Encoder {encoder['name']} state corrected (Invalid transition: {bin(transition)})")
                 self.last_state = current_state
             # The key is to only update last_state *after* a valid transition has completed.
+
+    def handle_rotation(self, direction):
+        """Dispatch a single detent of rotation (+1 CW / -1 CCW)."""
+        if self.is_preset_encoder:
+            # Held: change bank. Released: change preset within the current bank.
+            if self.button.is_pressed:
+                if self.on_bank_change:
+                    self.on_bank_change(direction)
+            elif self.on_preset_change:
+                self.on_preset_change(direction)
+        else:
+            self.increment_cc_value(direction)
 
     def send_cc(self, value):
         # logger.info(f"RotaryEncoder.send_cc {self.name}: {self.cc}, {value}")

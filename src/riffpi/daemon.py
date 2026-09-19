@@ -43,6 +43,7 @@ effect_states = [False] * 4 # Global state for MIDI toggles
 
 # Guitarix preset navigation
 current_preset_bank = 0  # Current preset bank (0-3 for A-D)
+current_preset = 0  # Current preset number within the bank (Program Change number)
 
 # Index into `buttons` of the preset encoder's push button (the last encoder). `buttons`
 # is [foot switches...] + [encoder buttons...], so this is only known once both are built;
@@ -64,28 +65,34 @@ def set_preset_bank(bank_index):
         send_cc(PRESET_CHANGE_CC, 0)  # Select first preset in bank
         logger.info(f"Switched to preset bank {chr(ord('A') + bank_index)}")
 
+def change_bank(delta):
+    """Move to the next/previous preset bank, wrapping A-D (called when the preset
+    encoder is rotated while its button is held)."""
+    new_bank = (current_preset_bank + delta) % 4
+    set_preset_bank(new_bank)
+
 def change_preset(delta):
-    """Change preset by delta amount (positive for next, negative for previous)"""
-    # In a real implementation, we would need to know the current preset
-    # For now, we'll simulate changing presets
-    # This would require querying guitarix for actual preset info
-    logger.info(f"Changing preset by {delta}")
+    """Move to the next/previous preset within the current bank (called when the
+    preset encoder is rotated with its button released)."""
+    global current_preset
+    current_preset = max(0, min(127, current_preset + delta))
+    reset()  # Reset all effects: presets define their own effect chain
+    midi_out.send(mido.Message('program_change', program=current_preset))
+    logger.info(f"Changing preset by {delta} -> preset {current_preset}")
 
 # --- BUTTON HANDLERS ---
 def handle_effect_toggle(idx):
-    # Special handling for the preset encoder (last one)
-    if idx == PRESET_ENCODER_INDEX:  # Last encoder is our special preset encoder
-        # Cycle through banks A-D (0-3) on click
-        new_bank = (current_preset_bank + 1) % 4
-        set_preset_bank(new_bank)
-    else:
-        # Standard effect toggle behavior
-        # logger.info(f"handle_effect_toggle {idx}")
-        effect_states[idx] = not effect_states[idx]
-        if leds[idx] is not None:
-            leds[idx].value = effect_states[idx]
-        send_cc(SWITCH_CC + idx, 127 if effect_states[idx] else 0)
-        # logger.info(f"Button {idx} pressed. State: {effect_states[idx]}")
+    # The preset encoder's button only acts as a modifier for its rotation (see
+    # RotaryEncoder.handle_rotation); a plain click with no rotation does nothing.
+    if idx == PRESET_ENCODER_INDEX:
+        return
+    # Standard effect toggle behavior
+    # logger.info(f"handle_effect_toggle {idx}")
+    effect_states[idx] = not effect_states[idx]
+    if leds[idx] is not None:
+        leds[idx].value = effect_states[idx]
+    send_cc(SWITCH_CC + idx, 127 if effect_states[idx] else 0)
+    # logger.info(f"Button {idx} pressed. State: {effect_states[idx]}")
 
 
 def reset():
@@ -211,7 +218,11 @@ def run():
     for i, (mcp, clk_pin, dt_pin, sw_pin, name, cc) in enumerate(encoder_configs):
         # Make the last encoder (index 3) a preset encoder
         is_preset = (i == len(encoder_configs) - 1)
-        encoder = RotaryEncoder(midi_out, mcp, name, clk_pin, dt_pin, sw_pin, cc, is_preset)
+        encoder = RotaryEncoder(
+            midi_out, mcp, name, clk_pin, dt_pin, sw_pin, cc, is_preset,
+            on_preset_change=change_preset if is_preset else None,
+            on_bank_change=change_bank if is_preset else None,
+        )
         encoders.append(encoder)
         buttons.append(encoder.button)
         effect_states.append(False)

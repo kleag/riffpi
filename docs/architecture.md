@@ -85,8 +85,10 @@ device plus a MIDI-input listener thread, and blocks on `signal.pause()`:
   keypad when switching preset banks).
 
 Foot switch buttons and every encoder's built-in push button route through the same
-`handle_effect_toggle(idx)` callback. The **last** encoder is special-cased as the preset-bank
-selector (cycles Guitarix banks A-D) instead of toggling an effect.
+`handle_effect_toggle(idx)` callback, but the **last** encoder's button is a no-op there — it
+only acts as a modifier read directly by that encoder's own rotation handling
+(`RotaryEncoder.handle_rotation`): turning the encoder released changes preset, turning it held
+changes preset bank (A-D).
 
 `i2c_lock` (a `threading.Lock`) guards ADS1115 reads shared between the `Joystick` and
 `ExpressionPedal` threads, since both poll the same `ADS1115` instance concurrently.
