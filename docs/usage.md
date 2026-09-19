@@ -35,8 +35,9 @@ up live over Guitarix's JSON-RPC control port — start Guitarix with `guitarix 
 `GUITARIX_RPC_HOST`/`GUITARIX_RPC_PORT` in `riffpi/daemon.py` to use a different port) for this
 to work; if that port isn't reachable, preset changes still work but fall back to an un-wrapped
 0-127 clamp. Its push button instead cycles through Guitarix preset banks **A → B → C → D →
-A...** (sends CC32 = bank index, then a bank-select Program Change). The other three encoders'
-buttons behave like extra foot switches.
+A...** (sends CC0=2, then CC32 = bank index, then a Program Change selecting the bank's first
+preset — Guitarix ignores CC32 unless CC0=2 precedes it). The other three encoders' buttons
+behave like extra foot switches.
 
 ## Keypad
 
@@ -79,5 +80,5 @@ a rolling median filter to avoid jitter.
 | Foot switches 1-4 | 64-67 |
 | Rotary encoders 1-3 | 20-22 |
 | Preset encoder: preset change (turn) | Program Change |
-| Preset encoder: bank change (click) | 32 (bank), Program Change (preset within bank) |
+| Preset encoder: bank change (click) | 0=2 (bank-select mode), 32 (bank), Program Change (first preset in bank) |
 | Expression pedal | 24 |

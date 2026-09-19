@@ -132,10 +132,17 @@ logic independently and are **not** kept in sync automatically.
   starting Guitarix with `-p <port>`; if that's unreachable it falls back to an un-wrapped 0-127
   clamp (logged once via `_gx_rpc_unreachable_logged`, not spammed every rotation tick).
 - MIDI CC numbers are the integration contract with Guitarix: `SWITCH_CC=64` (+idx per foot
-  switch), `ENCODER_CC_NUMBERS=[20,21,22,23]`, `PRESET_BANK_CC=32`, `PRESET_CHANGE_CC=0`,
-  expression pedal `MIDI_CC_NUMBER=24`. The `midi_input_thread` listens on the same virtual port
-  for CC echoes from Guitarix and updates local LED/encoder state to stay in sync when a preset
-  change alters effect state externally. Full mapping table: `docs/usage.md`.
+  switch), `ENCODER_CC_NUMBERS=[20,21,22,23]`, `PRESET_BANK_CC=32`, expression pedal
+  `MIDI_CC_NUMBER=24`. Bank switching (`set_preset_bank`) is fussier than a single CC: Guitarix
+  ignores `PRESET_BANK_CC` unless `BANK_SELECT_MODE_CC=0` (value `BANK_SELECT_MODE_VALUE=2`) is
+  sent first, and "select the bank's first preset" needs an actual `mido.Message('program_change',
+  program=0)`, not a CC — sending a plain `control_change` on controller 0 (what this used to do,
+  under the old and now-removed `PRESET_CHANGE_CC=0` name) silently does nothing; confirmed
+  against a live Guitarix instance via its JSON-RPC port. `keypad.py`'s own independent
+  `set_bank()` already used the correct 3-message sequence — check it before changing either one.
+  The `midi_input_thread` listens on the same virtual port for CC echoes from Guitarix and updates
+  local LED/encoder state to stay in sync when a preset change alters effect state externally.
+  Full mapping table: `docs/usage.md`.
 - Physical pin maps for buttons/LEDs/encoders are hardcoded per-MCP as `(mcp_number, pin)` tuples
   at the top of `daemon.py` — cross-reference against the pinout comments above
   `encoder_configs` (which board is "1st/2nd/3rd/4th from left to right") and the tables in

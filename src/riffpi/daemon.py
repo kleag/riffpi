@@ -29,8 +29,12 @@ SWITCH_CC = 64  # MIDI CC number for effect toggles
 ENCODER_CC_NUMBERS = [20, 21, 22, 23]  # MIDI CC for encoders
 
 # Guitarix preset navigation settings
-PRESET_BANK_CC = 32  # MIDI CC for preset bank selection
-PRESET_CHANGE_CC = 0  # MIDI CC for preset change
+PRESET_BANK_CC = 32  # MIDI CC for preset bank selection (Bank Select LSB)
+# MIDI CC0 (Bank Select MSB). Guitarix only treats CC32 as a bank index when this is sent
+# first with value 2 (matches keypad.py's set_bank(), which uses the same sequence and is
+# known to work); sending CC32 alone, or a CC0 value of 0, is silently ignored.
+BANK_SELECT_MODE_CC = 0
+BANK_SELECT_MODE_VALUE = 2
 
 # Guitarix's JSON-RPC control port, used only to look up how many presets exist in the
 # current bank so the preset encoder wraps correctly. Requires starting Guitarix with
@@ -71,8 +75,9 @@ def set_preset_bank(bank_index):
         current_preset = 0
         # Send MIDI messages to change bank
         reset()  # Reset all effects
+        send_cc(BANK_SELECT_MODE_CC, BANK_SELECT_MODE_VALUE)
         send_cc(PRESET_BANK_CC, bank_index)
-        send_cc(PRESET_CHANGE_CC, 0)  # Select first preset in bank
+        midi_out.send(mido.Message('program_change', program=0))  # Select first preset in bank
         logger.info(f"Switched to preset bank {chr(ord('A') + bank_index)}")
 
 def change_bank(delta):
@@ -115,18 +120,18 @@ def change_preset(delta):
 
 # --- BUTTON HANDLERS ---
 def handle_effect_toggle(idx):
+    logger.info(f"handle_effect_toggle idx={idx} (PRESET_ENCODER_INDEX={PRESET_ENCODER_INDEX})")
     # Special handling for the preset encoder (last one)
     if idx == PRESET_ENCODER_INDEX:  # Last encoder is our special preset encoder
         # Cycle through banks A-D (0-3) on click
         change_bank(1)
         return
     # Standard effect toggle behavior
-    # logger.info(f"handle_effect_toggle {idx}")
     effect_states[idx] = not effect_states[idx]
     if leds[idx] is not None:
         leds[idx].value = effect_states[idx]
     send_cc(SWITCH_CC + idx, 127 if effect_states[idx] else 0)
-    # logger.info(f"Button {idx} pressed. State: {effect_states[idx]}")
+    logger.info(f"Button {idx} pressed. State: {effect_states[idx]}")
 
 
 def reset():
