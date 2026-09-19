@@ -15358,7 +15358,7 @@
 			(justify left bottom)
 		)
 	)
-	(gr_text "https://github.com/kleag/kleagmfx"
+	(gr_text "https://github.com/kleag/riffpi"
 		(at 122.5 58.5 0)
 		(layer "Dwgs.User")
 		(uuid "1455acf8-b17e-4c0f-93ad-89281b2b7cee")
