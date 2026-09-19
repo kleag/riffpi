@@ -67,7 +67,16 @@ automated verification without a self-hosted Pi runner.
   touch `docs/`, `mkdocs.yml`, or `README.md`.
 - `.github/workflows/release.yml` builds and publishes to PyPI on GitHub Release, via Trusted
   Publishing (OIDC) — no stored token. Requires the `riffpi` PyPI project to have this repo
-  registered as a trusted publisher (a one-time manual step on pypi.org).
+  registered as a trusted publisher (a one-time manual step on pypi.org, done as a "pending
+  publisher" before the project existed — PyPI creates the project on the first successful
+  publish).
+- Version bumps use `bumpver` (`[tool.bumpver]` in `pyproject.toml`), which commits, tags
+  (bare `MAJOR.MINOR.PATCH`, no `v` prefix), and pushes — it does **not** create a GitHub
+  Release itself. `.github/workflows/tag-release.yml` watches for those tag pushes and runs
+  `gh release create` to publish a GitHub Release from the tag, which is what then fires
+  `release.yml`'s `release: published` trigger. So the full chain is: `bumpver update` →
+  tag pushed → `tag-release.yml` creates the GitHub Release → `release.yml` builds and
+  publishes to PyPI.
 
 ## Code architecture
 
