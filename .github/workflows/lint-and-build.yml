@@ -1,0 +1,33 @@
+name: lint-and-build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dev tooling
+        run: pip install ruff build twine
+
+      # Note: the package's runtime dependencies (Adafruit Blinka, gpiozero, ...) actively
+      # probe for real Raspberry Pi hardware on import, so they cannot be installed/imported
+      # on a generic GitHub-hosted runner. This job only lints and validates packaging, it
+      # does not import riffpi itself.
+      - name: Lint
+        run: ruff check src/
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Check package metadata
+        run: twine check dist/*

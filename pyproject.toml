@@ -1,37 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
-name = "multieffects"
-version = "0.1.0"
-description = "Add your description here"
+name = "riffpi"
+dynamic = ["version"]
+description = "Control daemon for Kleag's MFX guitar multi-effect pedal (Raspberry Pi + Guitarix)"
 readme = "README.md"
+license = "CERN-OHL-W-2.0"
 requires-python = ">=3.11"
 dependencies = [
-# Hardware & GPIO
-    "Adafruit-Blinka==8.66.2",
-    "Adafruit-Blinka-Raspberry-Pi5-Neopixel==1.0.0rc2",
-    "adafruit-circuitpython-ads1x15==2.4.2",
-    "adafruit-circuitpython-ads7830==1.0.3",
-    "adafruit-circuitpython-mcp230xx==2.5.18",
-    "adafruit-circuitpython-requests==4.1.13",
-    "gpiozero==2.0.1",
-    "pigpio==1.78",
-    "RPi.GPIO==0.7.1",
-    "rpi-lgpio==0.6",
-    "rpi-ws281x==5.0.0",
-    "sense-hat==2.6.0",
-    "spidev==3.5",
-    "pyusb==1.3.1",
-    "pyserial==3.5",
+    # Raspberry Pi I2C/GPIO access (board, busio, digitalio)
+    "Adafruit-Blinka>=8.66.2",
+    "adafruit-circuitpython-ads1x15>=2.4.2",
+    "adafruit-circuitpython-mcp230xx>=2.5.18",
+    "gpiozero>=2.0.1",
 
-    "av==12.3.0",
-    "mido==1.2.10",
-    "python-rtmidi==1.4.7",
+    # MIDI I/O to Guitarix
+    "mido>=1.2.10",
+    "python-rtmidi>=1.4.7",  # mido's virtual-port backend
 
-    "psutil==5.9.4",
-    "numpy==1.24.2",
-    "evdev==1.6.1",
-    "pynput==1.7.5",
-    "tqdm==4.66.3",
-    "thonny==4.1.4",
+    # Virtual mouse (joystick/keypad emulate mouse input)
+    "python-uinput>=0.11.2",
 
-    "rich==13.3.1",
+    # Console/status output
+    "rich>=13.3.1",
+]
+
+[project.scripts]
+riffpi = "riffpi.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kleag/kleagmfx"
+Repository = "https://github.com/kleag/kleagmfx"
+Documentation = "https://kleag.github.io/kleagmfx/"
+
+[project.optional-dependencies]
+dev = ["ruff", "build", "twine"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/riffpi"]
+
+[tool.hatch.version]
+path = "src/riffpi/__init__.py"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 135
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.bumpver]
+current_version = "0.1.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = false
+
+[tool.bumpver.file_patterns]
+"src/riffpi/__init__.py" = [
+    '__version__ = "{version}"',
 ]

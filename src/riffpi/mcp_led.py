@@ -2,6 +2,7 @@
 from adafruit_mcp230xx.mcp23017 import MCP23017
 from digitalio import Direction
 
+
 class MCPLed:
     """ MCP23017 LED """
     def __init__(self, mcp: MCP23017, pin: int):

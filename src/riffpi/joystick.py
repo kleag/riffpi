@@ -1,28 +1,40 @@
 #!/usr/bin/env python3
+import logging
+import math
+import statistics
+import threading
+import time
+from signal import pause
+
 import adafruit_ads1x15.ads1115 as ADS
 import board
 import busio
-import logging
-import math
-import threading
-import time
 import uinput
-
 from adafruit_ads1x15.analog_in import AnalogIn
 from adafruit_mcp230xx.mcp23017 import MCP23017
 from digitalio import Direction, Pull
 from rich.console import Console
-from signal import pause
-
 
 logger = logging.getLogger(__name__)
 
 
 class Joystick:
     # --- CONFIGURATION ---
-    SENSITIVITY = 30.0  # Maximum mouse speed in pixels/s
-    DEAD_ZONE   = 0.02    # Joystick dead zone
-    POWER_CURVE = math.log(1/SENSITIVITY) / math.log(0.02)  # Exponent to match 1px/s at 0.02, 100px/s at 1.0
+    # Maximum mouse speed (pixels/s) reached only at full deflection (|x|/|y| == 1.0).
+    SENSITIVITY = 30.0
+    # Fraction of travel (0.0-1.0) around center treated as "not moved". Noise is filtered
+    # separately (SMOOTHING_WINDOW), so this only needs to absorb residual jitter.
+    DEAD_ZONE = 0.02
+    # Exponent applied to the (post-dead-zone) normalized deflection before scaling by
+    # SENSITIVITY. Must be > 1: with an exponent < 1 the curve has infinite slope at 0, so
+    # speed jumps immediately once past the dead zone (the "dead then jumpy" feel this
+    # replaces). >1 makes the slope start at 0 and ramp up smoothly, so small deflections
+    # give fine/slow motion (useful for nudging a Guitarix knob) and only large deflections
+    # approach SENSITIVITY. Raise it further (e.g. 3.0-4.0) for even finer low-end control.
+    POWER_CURVE = 2.5
+    # Number of raw voltage samples averaged (median) per axis to smooth out ADC/electrical
+    # noise from the joystick's low-cost potentiometers before it reaches the dead zone/curve.
+    SMOOTHING_WINDOW = 5
     LOOP_DELAY = 0.01  # General loop delay (seconds)
 
     def __init__(self, ads: ADS.ADS1115, mcp: MCP23017, lock: threading.Lock, debug: bool = False):
@@ -40,7 +52,10 @@ class Joystick:
         try:
             self.device = uinput.Device(events)
         except Exception as e:
-            logger.error(f"UInput device creation failed. Check permissions (sudo or your user in the input group setup with udev). Error: {e}")
+            logger.error(
+                "UInput device creation failed. Check permissions (sudo or your user "
+                f"in the input group setup with udev). Error: {e}"
+            )
             exit(1)
 
         self.joystick_sw = mcp.get_pin(10)  # B2
@@ -53,14 +68,44 @@ class Joystick:
         self.spike_count_y = 0
         self.console = Console()
 
+        self.x_readings = [0.0] * Joystick.SMOOTHING_WINDOW
+        self.y_readings = [0.0] * Joystick.SMOOTHING_WINDOW
+        self.x_center, self.y_center = self.calibrate_center()
+
+    def calibrate_center(self, samples: int = 50, delay: float = 0.01):
+        """Measure the at-rest center voltage per axis instead of assuming a fixed value.
+
+        Assumes the joystick is untouched (spring-centered) when this runs, i.e. at
+        startup before the poll loop begins. Uses the median to stay robust if it's
+        bumped once during the sampling window.
+        """
+        x_samples = []
+        y_samples = []
+        for _ in range(samples):
+            with self.lock:
+                x_samples.append(self.joystick_x_axis.voltage)
+                y_samples.append(self.joystick_y_axis.voltage)
+            time.sleep(delay)
+        x_center = statistics.median(x_samples)
+        y_center = statistics.median(y_samples)
+        logger.info(f"Joystick calibrated center: x={x_center:.3f}V, y={y_center:.3f}V")
+        return x_center, y_center
 
     def read_joystick(self):
         """Return normalized X, Y values in range -1.0 .. +1.0 using ADS1115."""
-        x_center = 1.62 # Approximate center voltage
-        y_center = 1.65
         with self.lock:
-            x = (self.joystick_x_axis.voltage - x_center) / x_center
-            y = (self.joystick_y_axis.voltage - y_center) / y_center
+            raw_x = self.joystick_x_axis.voltage
+            raw_y = self.joystick_y_axis.voltage
+
+        self.x_readings.pop(0)
+        self.x_readings.append(raw_x)
+        self.y_readings.pop(0)
+        self.y_readings.append(raw_y)
+        smoothed_x = statistics.median(self.x_readings)
+        smoothed_y = statistics.median(self.y_readings)
+
+        x = (smoothed_x - self.x_center) / self.x_center
+        y = (smoothed_y - self.y_center) / self.y_center
         return max(-1, min(1, x)), max(-1, min(1, y))
 
     def calculate_speed(self, x, y):
@@ -116,7 +161,7 @@ class Joystick:
             # 2. Joystick Button (Reads from MCP23017)
             switch_state = self.joystick_sw.value  # True = not pressed
             if switch_state != self.last_switch_state:
-                uinput_state = 1 if switch_state == False else 0
+                uinput_state = 1 if not switch_state else 0
                 # logger.debug(f"joystick button new state: {uinput_state}")
                 try:
                     self.device.emit(uinput.BTN_MIDDLE, uinput_state)
