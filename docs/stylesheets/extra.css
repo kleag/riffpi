@@ -1,0 +1,42 @@
+/* RiffPi brand palette — a pick cut like a stompbox faceplate.
+   Ink (pedal enclosure), red (Red Special-inspired pick), LED yellow.
+
+   Material sets --md-typeset-a-color etc. on <body> via a
+   [data-md-color-primary="black"] rule, which beats a plain :root
+   override (equal specificity, but the variable is set again lower in
+   the tree). Matching that same attribute selector here, after it in
+   the cascade, is what actually wins. */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #1B1815;
+  --md-primary-fg-color--light: rgba(27, 24, 21, 0.7);
+  --md-primary-fg-color--dark: #1B1815;
+  --md-primary-bg-color: #F4EAD9;
+  --md-primary-bg-color--light: rgba(244, 234, 217, 0.7);
+
+  --md-accent-fg-color: #9C3428;
+  --md-accent-fg-color--transparent: rgba(156, 52, 40, 0.1);
+  --md-accent-bg-color: #FFFFFF;
+  --md-accent-bg-color--light: #FFFFFF;
+
+  --md-typeset-a-color: #9C3428;
+
+  --riffpi-led: #FFD400;
+}
+
+/* Material hardcodes these instead of using a variable. */
+[data-md-color-primary="black"] .md-header,
+[data-md-color-primary="black"] .md-tabs {
+  background-color: #1B1815;
+}
+[data-md-color-primary="black"] .md-nav__source {
+  background-color: #241f1b;
+}
+[data-md-color-primary="black"] .md-nav--primary .md-nav__title[for="__drawer"] {
+  background-color: #1B1815;
+}
+
+/* The foot-switch LED, repurposed as a highlight for ==marked== text. */
+.md-typeset mark {
+  background-color: var(--riffpi-led);
+  color: #1B1815;
+}

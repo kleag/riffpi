@@ -1,5 +1,7 @@
 # RiffPi
 
+![RiffPi](docs/images/riffpi-banner.svg)
+
 [![docs](https://github.com/kleag/riffpi/actions/workflows/docs.yml/badge.svg)](https://github.com/kleag/riffpi/actions/workflows/docs.yml)
 [![lint-and-build](https://github.com/kleag/riffpi/actions/workflows/lint-and-build.yml/badge.svg)](https://github.com/kleag/riffpi/actions/workflows/lint-and-build.yml)
 [![PyPI](https://img.shields.io/pypi/v/riffpi)](https://pypi.org/project/riffpi/)

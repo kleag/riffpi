@@ -1,5 +1,7 @@
 # RiffPi
 
+![RiffPi](images/riffpi-banner.svg)
+
 This site documents [RiffPi](https://github.com/kleag/riffpi), the control daemon for
 **Kleag's MFX**, a guitar multi-effect pedalboard built around a Raspberry Pi, a
 [Pisound](https://blokas.io/pisound/) sound card, and [Guitarix](https://guitarix.org/) as the

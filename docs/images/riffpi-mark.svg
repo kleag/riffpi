@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="RiffPi">
+<path d="M50,8 C76,8 88.5,19 88.5,37 C88.5,60.5 72,89 50,98 C28,89 11.5,60.5 11.5,37 C11.5,19 24,8 50,8 Z" fill="#9C3428" stroke="#1B1815" stroke-width="2.5"/>
+<circle cx="24" cy="38" r="2.6" fill="#1B1815"/>
+<circle cx="24" cy="60" r="2.6" fill="#1B1815"/>
+<circle cx="76" cy="38" r="2.6" fill="#1B1815"/>
+<circle cx="76" cy="60" r="2.6" fill="#1B1815"/>
+<rect x="30" y="30" width="40" height="9" rx="4.5" fill="#1B1815"/>
+<rect x="34" y="30" width="9" height="36" rx="4.5" fill="#1B1815"/>
+<rect x="57" y="30" width="9" height="36" rx="4.5" fill="#1B1815"/>
+<circle cx="50" cy="80" r="7" fill="#FFD400" stroke="#1B1815" stroke-width="2"/>
+</svg>

@@ -5,12 +5,20 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material # Le thème le plus populaire (pro et moderne)
+  logo: images/riffpi-mark.svg
+  favicon: images/favicon.png
   palette:
-    primary: indigo
-    accent: indigo
+    primary: black
+    accent: red
+  font:
+    text: Space Grotesk
+    code: IBM Plex Mono
   features:
     - navigation.tabs
     - content.code.copy
+
+extra_css:
+  - stylesheets/extra.css
 
 nav:
   - Accueil: index.md
