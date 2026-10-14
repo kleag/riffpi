@@ -40,6 +40,13 @@ class RotaryEncoder:
     # half-step call handle_rotation() 4x per detent (e.g. a single click jumping a preset
     # by 4 instead of 1); only fire once the state machine lands back on this rest state.
     DETENT_STATE = 0b11
+    # Net number of valid half-steps (CW +1, CCW -1) needed between two rest states to count
+    # as a detent. A real detent is 4; requiring only 3 tolerates one half-step missed by
+    # polling. A glitch on a single pin (e.g. 11 -> 10 -> 11, seen when the joystick button
+    # is clicked) is one step out and one step back, netting 0, so it no longer counts:
+    # firing on any valid step landing on DETENT_STATE turned such glitches into phantom
+    # preset changes.
+    MIN_DETENT_STEPS = 3
 
     def __init__(
         self,
@@ -67,6 +74,7 @@ class RotaryEncoder:
         # self.sw = sw
         # self.last_clk = self.clk.value
         self.last_state = (initial_clk << 1) | initial_dt
+        self.step_count = 0  # Net valid half-steps since the last rest state
         # self.last_sw = sw.value
         self.midi_value = SWITCH_CC
         self.button = MCPButton(mcp, sw_pin)
@@ -113,16 +121,14 @@ class RotaryEncoder:
             if transition in RotaryEncoder.CW_transitions:
                 # logger.debug(f"Encoder {self.name} Rotated → (clockwise)")
                 self.last_state = current_state # Update state after a valid step
-                # Only the half-step that lands back on the rest position completes a
-                # full physical detent; the others just advance the state machine.
-                if current_state == RotaryEncoder.DETENT_STATE:
-                    self.handle_rotation(1)
+                self.step_count += 1
+                self.check_detent()
 
             elif transition in RotaryEncoder.CCW_transitions:
                 # logger.debug(f"Encoder {self.name} Rotated → (counterclockwise)")
                 self.last_state = current_state # Update state after a valid step
-                if current_state == RotaryEncoder.DETENT_STATE:
-                    self.handle_rotation(-1)
+                self.step_count -= 1
+                self.check_detent()
 
             # 6. Optional: If the transition is invalid (i.e., due to bounce/noise),
             #    we generally ignore it and wait for a valid state.
@@ -136,7 +142,20 @@ class RotaryEncoder:
                 #    to detect the next valid step from the new physical position.
                 # logger.debug(f"Encoder {encoder['name']} state corrected (Invalid transition: {bin(transition)})")
                 self.last_state = current_state
+                if current_state == RotaryEncoder.DETENT_STATE:
+                    self.step_count = 0
             # The key is to only update last_state *after* a valid transition has completed.
+
+    def check_detent(self):
+        """Fire a rotation once back at the rest position, but only if the half-steps taken
+        since the previous rest position actually add up to a detent in one direction."""
+        if self.last_state != RotaryEncoder.DETENT_STATE:
+            return
+        if self.step_count >= RotaryEncoder.MIN_DETENT_STEPS:
+            self.handle_rotation(1)
+        elif self.step_count <= -RotaryEncoder.MIN_DETENT_STEPS:
+            self.handle_rotation(-1)
+        self.step_count = 0
 
     def handle_rotation(self, direction):
         """Dispatch a single detent of rotation (+1 CW / -1 CCW)."""

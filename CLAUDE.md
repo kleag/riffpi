@@ -162,7 +162,10 @@ not through the installed console script).
   clicks, so `handle_rotation(direction)` — which sends a relative MIDI CC delta, except for the
   preset encoder (`is_preset_encoder=True`), which instead calls its `on_preset_change` callback
   (`daemon.change_preset`) — only fires once `current_state` lands back on `DETENT_STATE`, not on
-  every intermediate half-step (firing on every half-step made one physical click move 4 steps).
+  every intermediate half-step (firing on every half-step made one physical click move 4 steps),
+  and only if the net count of valid half-steps since the last rest state reaches
+  `MIN_DETENT_STEPS` (3) in one direction — a single-pin glitch (`11 -> 10 -> 11`, e.g. induced
+  by clicking the joystick) nets 0 and must not count, or it becomes a phantom preset change.
   The preset encoder's own push button is unrelated to this and is handled, like every other
   button, through `handle_effect_toggle` in `daemon.py`.
 - `guitarix_rpc.py`: `GuitarixRPC`, a minimal client for Guitarix's JSON-RPC control port
