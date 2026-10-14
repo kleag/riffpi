@@ -12,8 +12,8 @@ import mido
 from adafruit_ads1x15.analog_in import AnalogIn
 
 # The actual voltages measured at the physical limits of the pedal
-V_MIN = 0.006
-V_MAX = 2.768
+V_MIN = 1.42
+V_MAX = 2.95
 MIDI_CC_NUMBER = 24
 
 logger = logging.getLogger(__name__)
