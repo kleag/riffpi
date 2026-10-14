@@ -24,6 +24,12 @@ KEYPAD_COL_PINS = [4, 5, 6, 7]
 # Max delay (seconds) between digit key presses to form a multi-digit preset
 DIGIT_SEQUENCE_TIMEOUT = 0.4
 
+# Number of consecutive identical scans required before a key press/release is accepted.
+# A single scan reading a column LOW is not enough: a transient glitch on the bus/lines
+# (seen when the joystick button is clicked) used to register as a phantom digit, which
+# 0.4s later was sent as a Program Change and switched the Guitarix preset.
+KEY_DEBOUNCE_SCANS = 3
+
 class KeyPad:
     keypad_map = [
         ['1', '2', '3', 'A'],
@@ -49,6 +55,9 @@ class KeyPad:
         self.pending_preset = False
         self.left_state = False
         self.right_state = False
+        self.candidate_key = None
+        self.candidate_count = 0
+        self.stable_key = None
 
         # --- VIRTUAL MOUSE SETUP (buttons only) ---
         try:
@@ -82,15 +91,28 @@ class KeyPad:
             row.value = True  # Reset row for next iteration
         return None
 
+    def debounced_scan_keypad(self):
+        """Scan the keypad, only reporting a change once it has been read identically
+        KEY_DEBOUNCE_SCANS times in a row."""
+        key = self.scan_keypad()
+        if key == self.candidate_key:
+            self.candidate_count += 1
+        else:
+            self.candidate_key = key
+            self.candidate_count = 1
+        if self.candidate_count >= KEY_DEBOUNCE_SCANS:
+            self.stable_key = key
+        return self.stable_key
+
     def set_bank(self, value: int):
-        # logger.info(f"KeyPad.set_bank {value}")
+        logger.info(f"KeyPad.set_bank {value}")
         self.task_queue.put(("reset", []))
         self.midi_out.send(mido.Message('control_change', control=0, value=2))
         self.midi_out.send(mido.Message('control_change', control=32, value=value))
         self.midi_out.send(mido.Message('program_change', program=0))
 
     def set_preset(self, value: int):
-        # logger.info(f"KeyPad.set_preset {value}")
+        logger.info(f"KeyPad.set_preset {value}")
         self.task_queue.put(("reset", []))
         self.midi_out.send(mido.Message('program_change', program=value))
 
@@ -98,7 +120,7 @@ class KeyPad:
         while True:
             try:
                 # Keypad Scan
-                key = self.scan_keypad()
+                key = self.debounced_scan_keypad()
                 now = time.monotonic()
 
                 # Commit pending preset if timeout expired
@@ -111,7 +133,7 @@ class KeyPad:
                         self.pending_preset = False
 
                 if key and key != self.last_key:
-                    # logger.info(f"Key pressed: {key}")
+                    logger.info(f"Key pressed: {key}")
                     if key in 'ABCD':
                         self.digit_buffer = ""
                         self.pending_preset = False
