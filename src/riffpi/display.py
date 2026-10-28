@@ -33,7 +33,7 @@ TRANSFORM_DEGREES = {"normal": 0, "90": 90, "180": 180, "270": 270}
 _known_transforms: Dict[str, str] = {}
 
 
-def _wayland_env() -> Dict[str, str]:
+def wayland_env() -> Dict[str, str]:
     """Environment for wlr-randr. A systemd --user service usually lacks WAYLAND_DISPLAY, so
     find the compositor's socket in XDG_RUNTIME_DIR ourselves."""
     env = dict(os.environ)
@@ -84,18 +84,22 @@ def _orientation(width: int, height: int, transform: str) -> str:
     return "landscape" if width > height else "portrait"
 
 
-def toggle_orientation() -> None:
-    """Switch the screen from portrait to landscape or back. Logs (doesn't raise) on failure."""
-    env = _wayland_env()
+def set_orientation(target: Optional[str] = None) -> None:
+    """Rotate the screen to `target` ("portrait" or "landscape"), or to the other orientation
+    when None. Does nothing if already there. Logs (doesn't raise) on failure."""
+    env = wayland_env()
     try:
         info = _query_output(env)
         if info is None:
-            logger.error(f"toggle_orientation: no enabled output found (wanted {DISPLAY_OUTPUT})")
+            logger.error(f"set_orientation: no enabled output found (wanted {DISPLAY_OUTPUT})")
             return
         name, width, height, transform = info
         orientation = _orientation(width, height, transform)
-        target = "portrait" if orientation == "landscape" else "landscape"
         _known_transforms[orientation] = transform
+        if target is None:
+            target = "portrait" if orientation == "landscape" else "landscape"
+        if target == orientation:
+            return
 
         new_transform = _known_transforms.get(target)
         if new_transform is None:
@@ -109,11 +113,16 @@ def toggle_orientation() -> None:
             env=env, capture_output=True, text=True, timeout=5, check=True,
         )
     except FileNotFoundError:
-        logger.error("toggle_orientation: wlr-randr not installed (sudo apt install wlr-randr)")
+        logger.error("set_orientation: wlr-randr not installed (sudo apt install wlr-randr)")
     except subprocess.CalledProcessError as e:
-        logger.error(f"toggle_orientation: wlr-randr failed: {e.stderr.strip()}")
+        logger.error(f"set_orientation: wlr-randr failed: {e.stderr.strip()}")
     except subprocess.TimeoutExpired:
-        logger.error("toggle_orientation: wlr-randr timed out")
+        logger.error("set_orientation: wlr-randr timed out")
+
+
+def toggle_orientation() -> None:
+    """Switch the screen from portrait to landscape or back."""
+    set_orientation(None)
 
 
 if __name__ == "__main__":

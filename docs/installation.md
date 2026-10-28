@@ -156,6 +156,33 @@ Typing `999` on the keypad toggles the screen between portrait and landscape (ha
 
 The rotation is not saved: after a reboot the screen is back in its configured orientation.
 
+## Mixer mode (keypad `998`)
+
+Typing `998` turns the pedal's screen into the remote control of a digital mixer with a web GUI,
+set up for a Soundcraft Ui24R (handled by `riffpi/mixer.py`):
+
+- on: joins the mixer's Wi-Fi (`nmcli`), rotates to landscape, opens the GUI in Chromium kiosk
+  mode;
+- off: closes Chromium, rotates back to portrait, reconnects the previously active Wi-Fi.
+
+Setup:
+
+1. Do the [screen rotation](#screen-rotation-keypad-999) setup above.
+2. Set `MIXER_WIFI_SSID` at the top of `riffpi/mixer.py` to the mixer's network name (the
+   network is assumed to have no password). `MIXER_URL` defaults to `http://10.10.1.1`, the
+   Ui24R's address on its own hotspot.
+3. Check Chromium is installed (`sudo apt install chromium` if `chromium` isn't found).
+4. Check the riffpi service is allowed to switch networks: from the pedal, type `998` and
+   watch `journalctl --user-unit riffpi.service -f`. A "Not authorized" error from `nmcli`
+   means NetworkManager's polkit rules don't let this user change connections outside a desktop
+   session; a polkit rule granting `org.freedesktop.NetworkManager.*` to this user is then
+   needed.
+
+The first time, the Pi creates a saved connection for the mixer's network; it then joins it in a
+few seconds. While in mixer mode the Pi is off your usual Wi-Fi. If the mixer is cabled to the
+Pi's Ethernet port instead, set `MIXER_URL` to `http://10.10.2.1` (the Ui24R's wired default);
+a failed Wi-Fi join is logged but the GUI is still opened.
+
 ## Disable WiFi power management
 
 To avoid losing WiFi unexpectedly on the Pi, disable its power management. Create

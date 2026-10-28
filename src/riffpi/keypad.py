@@ -14,6 +14,7 @@ from adafruit_mcp230xx.mcp23017 import MCP23017
 from digitalio import Direction, Pull
 
 from riffpi.display import toggle_orientation
+from riffpi.mixer import toggle_mixer_mode
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -35,6 +36,8 @@ KEY_DEBOUNCE_SCANS = 3
 # Digit sequence that toggles the screen between portrait and landscape instead of selecting a
 # preset. Outside the MIDI program range (0-127), so it can never shadow a real preset.
 TOGGLE_ORIENTATION_CODE = "999"
+# Digit sequence that enters/leaves mixer mode (see riffpi/mixer.py), also outside 0-127.
+TOGGLE_MIXER_MODE_CODE = "998"
 
 class KeyPad:
     keypad_map = [
@@ -134,6 +137,8 @@ class KeyPad:
                     try:
                         if self.digit_buffer == TOGGLE_ORIENTATION_CODE:
                             toggle_orientation()
+                        elif self.digit_buffer == TOGGLE_MIXER_MODE_CODE:
+                            toggle_mixer_mode()
                         else:
                             preset = int(self.digit_buffer)
                             self.set_preset(preset)

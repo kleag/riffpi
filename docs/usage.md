@@ -51,6 +51,9 @@ A 4x4 matrix keypad selects presets directly and doubles as mouse buttons:
 - **9 9 9** — instead of selecting a preset, toggles the screen between portrait and landscape
   (e.g. to use the pedal's screen for a mixer's web GUI). See
   [Screen rotation](installation.md#screen-rotation-keypad-999) for the one-time setup.
+- **9 9 8** — enters or leaves *mixer mode*: the Pi joins the mixer's Wi-Fi, turns the screen to
+  landscape and opens the mixer's web GUI full screen; typing it again closes it, goes back to
+  portrait and to the previous Wi-Fi. See [Mixer mode](installation.md#mixer-mode-keypad-998).
 - **\*** — virtual mouse left click (held down while the key is held).
 - **#** — virtual mouse right click (held down while the key is held).
 
