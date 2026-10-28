@@ -13,6 +13,8 @@ import uinput
 from adafruit_mcp230xx.mcp23017 import MCP23017
 from digitalio import Direction, Pull
 
+from riffpi.display import toggle_orientation
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
@@ -29,6 +31,10 @@ DIGIT_SEQUENCE_TIMEOUT = 0.4
 # (seen when the joystick button is clicked) used to register as a phantom digit, which
 # 0.4s later was sent as a Program Change and switched the Guitarix preset.
 KEY_DEBOUNCE_SCANS = 3
+
+# Digit sequence that toggles the screen between portrait and landscape instead of selecting a
+# preset. Outside the MIDI program range (0-127), so it can never shadow a real preset.
+TOGGLE_ORIENTATION_CODE = "999"
 
 class KeyPad:
     keypad_map = [
@@ -126,8 +132,11 @@ class KeyPad:
                 # Commit pending preset if timeout expired
                 if self.pending_preset and (now - self.last_digit_time) > DIGIT_SEQUENCE_TIMEOUT:
                     try:
-                        preset = int(self.digit_buffer)
-                        self.set_preset(preset)
+                        if self.digit_buffer == TOGGLE_ORIENTATION_CODE:
+                            toggle_orientation()
+                        else:
+                            preset = int(self.digit_buffer)
+                            self.set_preset(preset)
                     finally:
                         self.digit_buffer = ""
                         self.pending_preset = False

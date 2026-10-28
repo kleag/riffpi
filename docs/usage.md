@@ -48,6 +48,9 @@ A 4x4 matrix keypad selects presets directly and doubles as mouse buttons:
 - **0-9** — type a preset number. Digits typed within 0.4s of each other accumulate (e.g. `1`
   then `2` within the window selects preset 12); after 0.4s of no further digits, the number is
   sent as a Program Change and the buffer resets.
+- **9 9 9** — instead of selecting a preset, toggles the screen between portrait and landscape
+  (e.g. to use the pedal's screen for a mixer's web GUI). See
+  [Screen rotation](installation.md#screen-rotation-keypad-999) for the one-time setup.
 - **\*** — virtual mouse left click (held down while the key is held).
 - **#** — virtual mouse right click (held down while the key is held).
 

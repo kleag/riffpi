@@ -136,6 +136,26 @@ WantedBy=default.target
 Save it as `~/.config/systemd/user/riffpi.service` (adjusting `ExecStart` to wherever `riffpi`
 was installed, e.g. `which riffpi`), then run the `systemctl --user` commands above yourself.
 
+## Screen rotation (keypad `999`)
+
+Typing `999` on the keypad toggles the screen between portrait and landscape (handled by
+`riffpi/display.py`, which calls `wlr-randr`; Wayland desktop only, the Raspberry Pi OS default).
+
+1. Install the tool: `sudo apt install wlr-randr`. Run `wlr-randr` to see your output's name
+   (e.g. `DSI-1`).
+2. Make touches follow the rotation by mapping the touchscreen to that output in
+   `~/.config/labwc/rc.xml` (get the device name from `libinput list-devices`), then log out
+   and back in:
+
+    ```xml
+    <touch deviceName="your touchscreen name" mapToOutput="DSI-1" />
+    ```
+
+3. If the screen comes out upside down after a toggle, set `QUARTER_TURN_TRANSFORM = "270"` at
+   the top of `riffpi/display.py`. If several outputs are connected, set `DISPLAY_OUTPUT`.
+
+The rotation is not saved: after a reboot the screen is back in its configured orientation.
+
 ## Disable WiFi power management
 
 To avoid losing WiFi unexpectedly on the Pi, disable its power management. Create
