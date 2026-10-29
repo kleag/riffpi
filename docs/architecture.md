@@ -74,6 +74,9 @@ Pin numbers are the Adafruit CircuitPython MCP23017 numbering (`A0`-`A7` = 0-7, 
 `riffpi.daemon.run()` does all hardware/MIDI setup, then starts one daemon thread per input
 device plus a MIDI-input listener thread, and blocks on `signal.pause()`:
 
+- `pipewire_link_thread` — every 2 seconds, checks (`pw-link -l`) that the virtual MIDI port is
+  linked both ways to Guitarix's `gx_head_amp` ports and creates any missing link (`pw-link`),
+  so Guitarix can start after RiffPi or be restarted without restarting RiffPi.
 - `midi_input_thread` — listens on the same virtual MIDI port for CC echoes coming back from
   Guitarix (e.g. after a preset change alters effect state) and re-syncs local LED/encoder state.
 - `buttons_thread` — polls the 4 foot switches (debounced via `MCPButton`).

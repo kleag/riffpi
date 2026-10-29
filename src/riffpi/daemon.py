@@ -44,6 +44,16 @@ GUITARIX_RPC_HOST = "127.0.0.1"
 GUITARIX_RPC_PORT = 7777
 gx_rpc = GuitarixRPC(GUITARIX_RPC_HOST, GUITARIX_RPC_PORT)
 
+# PipeWire links between our virtual MIDI port and Guitarix, as (output port, input port).
+PIPEWIRE_LINKS = [
+    # Script -> Guitarix
+    ('Midi-Bridge:RtMidiOut Client:(capture_0) KleagMFX', 'gx_head_amp:midi_in_1'),
+    # Guitarix -> Script
+    ('gx_head_amp:midi_out_1', 'Midi-Bridge:RtMidiIn Client:(playback_0) KleagMFX'),
+]
+# How often pipewire_link_thread() checks these links are still in place (seconds).
+PIPEWIRE_LINK_CHECK_INTERVAL = 2.0
+
 # Keypad/Power LED (Keep original GPIO)
 POWER_LED_PIN = 11
 
@@ -195,21 +205,65 @@ def main_thread_loop():
                 pass
         time.sleep(0.001)
 
+def _existing_pipewire_links():
+    """Set of (output port, input port) pairs currently linked, parsed from `pw-link -l`.
+
+    Checked explicitly rather than inferred from `pw-link`'s exit status/error text, which
+    doesn't distinguish "already linked" from "port missing" (and is localized).
+    """
+    listing = subprocess.run(
+        ['pw-link', '-l'], capture_output=True, text=True, timeout=5, check=True
+    ).stdout
+    links = set()
+    port = None
+    for line in listing.splitlines():
+        if not line.startswith(' '):
+            port = line
+        elif line.strip().startswith('|->'):
+            links.add((port, line.strip()[len('|->'):].strip()))
+    return links
+
+
 def link_pipewire_ports():
-    try:
-        # Link Script -> Guitarix
-        subprocess.run(
-            ['pw-link', 'Midi-Bridge:RtMidiOut Client:(capture_0) KleagMFX', 'gx_head_amp:midi_in_1'],
-            check=False,
+    """Create whichever of PIPEWIRE_LINKS is missing. Return True if all are in place."""
+    existing = _existing_pipewire_links()
+    all_linked = True
+    for out_port, in_port in PIPEWIRE_LINKS:
+        if (out_port, in_port) in existing:
+            continue
+        result = subprocess.run(
+            ['pw-link', out_port, in_port], capture_output=True, text=True, timeout=5, check=False
         )
-        # Link Guitarix -> Script
-        subprocess.run(
-            ['pw-link', 'gx_head_amp:midi_out_1', 'Midi-Bridge:RtMidiIn Client:(playback_0) KleagMFX'],
-            check=False,
-        )
-        logger.info("PipeWire MIDI ports linked successfully.")
-    except Exception as e:
-        logger.error(f"Failed to link PipeWire ports: {e}")
+        if result.returncode != 0:
+            all_linked = False
+    return all_linked
+
+
+def pipewire_link_thread():
+    """Keep riffpi's MIDI port linked to Guitarix's.
+
+    Guitarix may start after riffpi (both autostart at login) or be restarted later, and its
+    ports always come back unlinked, so this re-checks every PIPEWIRE_LINK_CHECK_INTERVAL
+    seconds instead of linking once at startup. Logs only when the link state changes.
+    """
+    linked = None
+    while True:
+        try:
+            now_linked = link_pipewire_ports()
+            error = None
+        except (OSError, subprocess.SubprocessError) as e:
+            now_linked = False
+            error = e
+        if now_linked != linked:
+            if now_linked:
+                logger.info("PipeWire MIDI ports linked to Guitarix.")
+            elif error is not None:
+                logger.error(f"Failed to link PipeWire ports: {error}; will keep retrying.")
+            else:
+                logger.warning("Guitarix MIDI ports not available (is Guitarix running?); "
+                               "will keep retrying.")
+            linked = now_linked
+        time.sleep(PIPEWIRE_LINK_CHECK_INTERVAL)
 
 
 def run():
@@ -272,12 +326,12 @@ def run():
         btn.when_pressed = handle_effect_toggle
 
 
-    link_pipewire_ports()
     task_queue = queue.Queue()
     joystick = Joystick(ads, mcp1, lock=i2c_lock)
     keypad = KeyPad(task_queue, midi_out, mcp2)
     pedal = ExpressionPedal(midi_out, ads, lock=i2c_lock, channel=ADS.P2)
 
+    threading.Thread(target=pipewire_link_thread, daemon=True).start()
     threading.Thread(target=midi_input_thread, daemon=True).start()
     threading.Thread(target=buttons_thread, daemon=True).start()
     threading.Thread(target=joystick.poll_joystick, daemon=True).start()

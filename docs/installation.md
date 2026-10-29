@@ -60,6 +60,41 @@ sudo usermod -a -G input $USER
 
 Log out and back in (or reboot) for the group change to take effect.
 
+## Install and autostart Guitarix
+
+RiffPi is only the controller: the sound itself is processed by
+[Guitarix](https://guitarix.org/), running on the same Pi under PipeWire's JACK emulation.
+
+```bash
+sudo apt install guitarix pipewire-jack
+```
+
+Guitarix is a GUI application, so start it from the desktop session's autostart rather than as
+a systemd service (it needs the Wayland display, which systemd user services don't get by
+default). Create `~/.config/autostart/guitarix.desktop`:
+
+```ini
+[Desktop Entry]
+Type=Application
+Name=Guitarix
+Exec=sh -c "sleep 10 && pw-jack guitarix -p 7777"
+```
+
+- `pw-jack` runs Guitarix against PipeWire's JACK implementation.
+- `-p 7777` opens Guitarix's JSON-RPC control port, which RiffPi uses to know how many presets
+  each bank holds (see [Usage](usage.md#rotary-encoders)). It must match `GUITARIX_RPC_PORT` at
+  the top of `riffpi/daemon.py`.
+- `sleep 10` gives PipeWire and the Pisound time to come up after login.
+
+The desktop session starts this at login, so on a headless pedal enable automatic desktop login
+(`sudo raspi-config` → `System Options → Boot / Auto Login → Desktop Autologin`). Note that
+nothing restarts Guitarix if it crashes or is closed: relaunch it from the desktop menu.
+
+Startup order between Guitarix and RiffPi doesn't matter: RiffPi checks every 2 seconds that its
+MIDI port is linked to Guitarix's (`gx_head_amp`) through PipeWire, and creates the links as soon
+as Guitarix's ports appear, including after Guitarix is restarted. Until then its log shows
+"Guitarix MIDI ports not available".
+
 ## Install RiffPi
 
 ```bash

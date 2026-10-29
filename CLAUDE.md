@@ -36,9 +36,11 @@ permissions, systemd service, etc.) is in `docs/installation.md`.
   `[project.scripts]`), an argparse dispatcher over three subcommands — `run` (default when no
   subcommand is given), `install-service`, `uninstall-service`. `riffpi run` calls
   `riffpi.daemon.run()`, which opens a virtual ALSA/JACK MIDI port named `KleagMFX` via `mido`,
-  links it to Guitarix (`gx_head_amp`) through PipeWire (`pw-link`), then spawns one thread per
-  input device (buttons, joystick, keypad, expression pedal, each rotary encoder) plus a
-  MIDI-input listener thread that keeps LED/encoder state in sync when Guitarix itself changes a
+  then spawns a `pipewire_link_thread` that keeps it linked to Guitarix (`gx_head_amp`) through
+  PipeWire (`pw-link`, re-checked every `PIPEWIRE_LINK_CHECK_INTERVAL` seconds, since Guitarix
+  may start later or be restarted; it decides what's missing by parsing `pw-link -l`, not
+  `pw-link`'s localized error text), one thread per input device (buttons, joystick, keypad,
+  expression pedal, each rotary encoder) plus a MIDI-input listener thread that keeps LED/encoder state in sync when Guitarix itself changes a
   CC value.
 - `riffpi install-service` / `riffpi uninstall-service` (implemented in `riffpi/service.py`)
   write/remove `~/.config/systemd/user/riffpi.service` and enable/disable it via `systemctl
