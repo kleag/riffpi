@@ -60,40 +60,116 @@ sudo usermod -a -G input $USER
 
 Log out and back in (or reboot) for the group change to take effect.
 
-## Install and autostart Guitarix
+## Install and autostart Guitarix and guitariqx
 
 RiffPi is only the controller: the sound itself is processed by
-[Guitarix](https://guitarix.org/), running on the same Pi under PipeWire's JACK emulation.
+[Guitarix](https://guitarix.org/), running on the same Pi under PipeWire's JACK emulation. Guitarix
+runs headless, as a server (`-N`, no GUI of its own), and the touchscreen shows
+[guitariqx](https://kleag.github.io/guitariqx/), a Qt 6 touch-friendly GUI that drives it over
+its JSON-RPC port.
+
+Until the pull requests made to upstream Guitarix for this setup are merged, use the
+[kleag fork](https://kleag.github.io/guitarix/) of Guitarix, installed from its apt repository,
+rather than the distribution's `guitarix` package. Its `guitarix-kleag` package replaces (and
+conflicts with) the distribution's `guitarix*` packages and installs the same `/usr/bin/guitarix`
+binary. Packages are built for Debian Bookworm (Raspberry Pi OS Bookworm) and Ubuntu Resolute
+only, not yet for Trixie:
 
 ```bash
-sudo apt install guitarix pipewire-jack
+sudo install -d /etc/apt/keyrings
+sudo curl -fsSLo /etc/apt/keyrings/kleag-guitarix.asc https://kleag.github.io/guitarix/kleag-guitarix.asc
+sudo tee /etc/apt/sources.list.d/kleag-guitarix.sources <<EOF
+Types: deb
+URIs: https://kleag.github.io/guitarix
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: main
+Signed-By: /etc/apt/keyrings/kleag-guitarix.asc
+EOF
+sudo apt update
+sudo apt install guitarix-kleag pipewire-jack
 ```
 
-Guitarix is a GUI application, so start it from the desktop session's autostart rather than as
+If the distribution's `guitarix` was already installed, apt replaces it. Once the changes are
+merged upstream, going back to the distribution package is a matter of removing the `.sources`
+file and running `sudo apt install guitarix`.
+
+Download the guitariqx package matching your OS from its
+[releases](https://kleag.github.io/guitariqx/install/) (e.g.
+`guitariqx_<version>-1.bookworm_arm64.deb` for 64-bit Raspberry Pi OS Bookworm) and install it with apt, which pulls in the Qt modules it needs:
+
+```bash
+sudo apt install ./guitariqx_<version>-1.bookworm_arm64.deb
+```
+
+### Guitarix server (systemd user service)
+
+Without its GUI, Guitarix no longer needs the display, so it runs as a `systemd --user` service,
+like RiffPi itself, which restarts it if it crashes. Create
+`~/.config/systemd/user/guitarix.service`:
+
+```ini
+[Unit]
+Description=Guitarix engine (headless server)
+After=pipewire.service wireplumber.service
+Wants=pipewire.service wireplumber.service
+
+[Service]
+ExecStart=/usr/bin/pw-jack /usr/bin/guitarix -N -p 7777
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+```
+
+then enable and start it:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now guitarix.service
+```
+
+- `pw-jack` runs Guitarix against PipeWire's JACK implementation.
+- `-N` starts Guitarix without its own GUI (server mode).
+- `-p 7777` opens Guitarix's JSON-RPC control port, used both by guitariqx and by RiffPi (to know
+  how many presets each bank holds, see [Usage](usage.md#rotary-encoders)). It must match
+  `GUITARIX_RPC_PORT` at the top of `riffpi/daemon.py`.
+
+Check it with `systemctl --user status guitarix.service` and
+`journalctl --user-unit guitarix.service -f`. To start on boot with nobody logged in, enable
+lingering (see [below](#starting-on-boot-without-logging-in-headless)).
+
+### guitariqx in fullscreen (desktop autostart)
+
+guitariqx is a GUI application, so start it from the desktop session's autostart rather than as
 a systemd service (it needs the Wayland display, which systemd user services don't get by
-default). Create `~/.config/autostart/guitarix.desktop`:
+default). Create `~/.config/autostart/guitariqx.desktop`:
 
 ```ini
 [Desktop Entry]
 Type=Application
-Name=Guitarix
-Exec=sh -c "sleep 10 && pw-jack guitarix -p 7777"
+Name=guitariqx
+Exec=guitariqx -f -p 7777
 ```
 
-- `pw-jack` runs Guitarix against PipeWire's JACK implementation.
-- `-p 7777` opens Guitarix's JSON-RPC control port, which RiffPi uses to know how many presets
-  each bank holds (see [Usage](usage.md#rotary-encoders)). It must match `GUITARIX_RPC_PORT` at
-  the top of `riffpi/daemon.py`.
-- `sleep 10` gives PipeWire and the Pisound time to come up after login.
+- `-f` runs guitariqx fullscreen, for the touchscreen.
+- `-p 7777` connects it to the Guitarix server's JSON-RPC port (guitariqx defaults to `7000`, so
+  it must be given explicitly). Guitarix runs on the same Pi, so the default host, `localhost`,
+  is right.
 
-The desktop session starts this at login, so on a headless pedal enable automatic desktop login
-(`sudo raspi-config` → `System Options → Boot / Auto Login → Desktop Autologin`). Note that
-nothing restarts Guitarix if it crashes or is closed: relaunch it from the desktop menu.
+Startup order doesn't matter: guitariqx reconnects by itself when the Guitarix server starts or
+restarts. The desktop session starts it at login, so on a headless pedal enable automatic desktop
+login (`sudo raspi-config` → `System Options → Boot / Auto Login → Desktop Autologin`). Nothing
+restarts guitariqx if it is closed: relaunch it from a terminal or log out and back in.
 
-Startup order between Guitarix and RiffPi doesn't matter: RiffPi checks every 2 seconds that its
-MIDI port is linked to Guitarix's (`gx_head_amp`) through PipeWire, and creates the links as soon
-as Guitarix's ports appear, including after Guitarix is restarted. Until then its log shows
-"Guitarix MIDI ports not available".
+Startup order between Guitarix and RiffPi doesn't matter either: RiffPi checks every 2 seconds
+that its MIDI port is linked to Guitarix's (`gx_head_amp`) through PipeWire, and creates the
+links as soon as Guitarix's ports appear, including after Guitarix is restarted. Until then its
+log shows "Guitarix MIDI ports not available".
+
+If you previously autostarted Guitarix with its own GUI, remove
+`~/.config/autostart/guitarix.desktop`, otherwise a second Guitarix instance fights the server
+for the port and the Pisound.
 
 ## Install RiffPi
 

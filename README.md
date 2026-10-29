@@ -36,7 +36,7 @@ riffpi install-service   # writes, enables, and starts a systemd --user service
 ```
 
 See [Installation](https://kleag.github.io/riffpi/installation/) for the full Raspberry Pi
-setup (I2C, `uinput` permissions, installing and autostarting Guitarix, headless/no-login boot,
+setup (I2C, `uinput` permissions, installing and autostarting Guitarix and its guitariqx GUI, headless/no-login boot,
 WiFi power management), and
 [Usage](https://kleag.github.io/riffpi/usage/) for what each control does and the full MIDI CC
 mapping.
