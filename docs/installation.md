@@ -93,13 +93,28 @@ If the distribution's `guitarix` was already installed, apt replaces it. Once th
 merged upstream, going back to the distribution package is a matter of removing the `.sources`
 file and running `sudo apt install guitarix`.
 
-Download the guitariqx package matching your OS from its
-[releases](https://kleag.github.io/guitariqx/install/) (e.g.
-`guitariqx_<version>-1.bookworm_arm64.deb` for 64-bit Raspberry Pi OS Bookworm) and install it with apt, which pulls in the Qt modules it needs:
+Install guitariqx from its own [apt repository](https://kleag.github.io/guitariqx/apt/), so it is
+upgraded with the rest of the system by `apt upgrade`. apt pulls in the Qt modules it needs.
+Packages are built for Debian Bookworm (Raspberry Pi OS Bookworm), Trixie and Ubuntu Resolute.
+Its key is saved under its own name, so that it doesn't overwrite the Guitarix repository's
+`kleag-guitarix.asc`, which holds an extra key:
 
 ```bash
-sudo apt install ./guitariqx_<version>-1.bookworm_arm64.deb
+sudo install -d /etc/apt/keyrings
+sudo curl -fsSLo /etc/apt/keyrings/kleag-guitariqx.asc https://kleag.github.io/guitariqx/apt/kleag-guitarix.asc
+sudo tee /etc/apt/sources.list.d/guitariqx.sources <<EOF
+Types: deb
+URIs: https://kleag.github.io/guitariqx/apt
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: main
+Signed-By: /etc/apt/keyrings/kleag-guitariqx.asc
+EOF
+sudo apt update
+sudo apt install guitariqx
 ```
+
+If guitariqx was previously installed from a downloaded `.deb`, this repository takes over its
+upgrades; nothing needs to be removed first.
 
 ### Guitarix server (systemd user service)
 
