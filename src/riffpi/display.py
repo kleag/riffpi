@@ -32,6 +32,11 @@ TRANSFORM_DEGREES = {"normal": 0, "90": 90, "180": 180, "270": 270}
 # exactly what was there before rather than a possibly upside-down equivalent.
 _known_transforms: Dict[str, str] = {}
 
+# Rotation (degrees clockwise, as wlr-randr transforms are) of the output the first time we looked
+# at it, i.e. the orientation the joystick's axes are wired for, and its current rotation.
+_home_degrees: Optional[int] = None
+_current_degrees: Optional[int] = None
+
 
 def wayland_env() -> Dict[str, str]:
     """Environment for wlr-randr. A systemd --user service usually lacks WAYLAND_DISPLAY, so
@@ -96,6 +101,10 @@ def set_orientation(target: Optional[str] = None) -> None:
         name, width, height, transform = info
         orientation = _orientation(width, height, transform)
         _known_transforms[orientation] = transform
+        global _home_degrees, _current_degrees
+        _current_degrees = TRANSFORM_DEGREES.get(transform, 0)
+        if _home_degrees is None:
+            _home_degrees = _current_degrees
         if target is None:
             target = "portrait" if orientation == "landscape" else "landscape"
         if target == orientation:
@@ -112,6 +121,7 @@ def set_orientation(target: Optional[str] = None) -> None:
             ["wlr-randr", "--output", name, "--transform", new_transform],
             env=env, capture_output=True, text=True, timeout=5, check=True,
         )
+        _current_degrees = TRANSFORM_DEGREES.get(new_transform, 0)
     except FileNotFoundError:
         logger.error("set_orientation: wlr-randr not installed (sudo apt install wlr-randr)")
     except subprocess.CalledProcessError as e:
@@ -123,6 +133,24 @@ def set_orientation(target: Optional[str] = None) -> None:
 def toggle_orientation() -> None:
     """Switch the screen from portrait to landscape or back."""
     set_orientation(None)
+
+
+def rotate_pointer_motion(dx: int, dy: int) -> Tuple[int, int]:
+    """Turn a relative pointer motion meant for the screen's initial orientation into the current
+    one, so that pushing the joystick moves the pointer the same physical way however the screen
+    content has been rotated since (relative motion is in the content's own coordinates)."""
+    if _home_degrees is None or _current_degrees is None:
+        return dx, dy
+    rotation = (_current_degrees - _home_degrees) % 360
+    # Content turned clockwise by `rotation`: rotate the motion counter-clockwise by as much
+    # (screen coordinates, y pointing down).
+    if rotation == 90:
+        return dy, -dx
+    if rotation == 180:
+        return -dx, -dy
+    if rotation == 270:
+        return -dy, dx
+    return dx, dy
 
 
 if __name__ == "__main__":

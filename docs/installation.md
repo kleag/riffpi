@@ -269,13 +269,23 @@ Typing `999` on the keypad toggles the screen between portrait and landscape (ha
 
 1. Install the tool: `sudo apt install wlr-randr`. Run `wlr-randr` to see your output's name
    (e.g. `DSI-1`).
-2. Make touches follow the rotation by mapping the touchscreen to that output in
-   `~/.config/labwc/rc.xml` (get the device name from `libinput list-devices`), then log out
-   and back in:
+2. Make touches follow the rotation by mapping the touchscreen to that output. Get the
+   touchscreen's name from the `Device:` line of `sudo libinput list-devices` (e.g. `Goodix
+   Capacitive TouchScreen`) — it is the touchscreen's name, not the output's. Then, depending on
+   the desktop (`ps -e | grep -E 'labwc|wayfire'`), log out and back in after editing:
 
-    ```xml
-    <touch deviceName="your touchscreen name" mapToOutput="DSI-1" />
-    ```
+    - labwc, in `~/.config/labwc/rc.xml`:
+
+        ```xml
+        <touch deviceName="Goodix Capacitive TouchScreen" mapToOutput="DSI-1" />
+        ```
+
+    - wayfire, in `~/.config/wayfire.ini`:
+
+        ```ini
+        [input-device:Goodix Capacitive TouchScreen]
+        output = DSI-1
+        ```
 
 3. If the screen comes out upside down after a toggle, set `QUARTER_TURN_TRANSFORM = "270"` at
    the top of `riffpi/display.py`. If several outputs are connected, set `DISPLAY_OUTPUT`.

@@ -15,6 +15,8 @@ from adafruit_mcp230xx.mcp23017 import MCP23017
 from digitalio import Direction, Pull
 from rich.console import Console
 
+from riffpi.display import rotate_pointer_motion
+
 logger = logging.getLogger(__name__)
 
 
@@ -153,9 +155,11 @@ class Joystick:
                 dx, dy = self.calculate_speed(x, y)
                 if dx != 0 or dy != 0:
                     # logger.debug(f"joystick move: {dx},{dy}")
+                    # Follow the screen rotation done by the keypad's 999 / 998 codes.
+                    rel_x, rel_y = rotate_pointer_motion(int(-dx), int(-dy))
                     try:
-                        self.device.emit(uinput.REL_X, int(-dx))
-                        self.device.emit(uinput.REL_Y, int(-dy))
+                        self.device.emit(uinput.REL_X, rel_x)
+                        self.device.emit(uinput.REL_Y, rel_y)
                     except NameError as e: # Handle case where uinput device failed to initialize
                         logger.warn(f"Joystick.poll_joystick uinput failure: {e}")
 
