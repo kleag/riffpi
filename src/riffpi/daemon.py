@@ -92,7 +92,17 @@ def set_preset_bank(bank_index):
 
 def change_bank(delta):
     """Move to the next/previous preset bank, wrapping A-D (called when the preset
-    encoder's button is clicked)."""
+    encoder's button is clicked). Starts from the bank Guitarix actually has loaded when
+    its RPC port is reachable, since it may have been changed elsewhere (another UI, or
+    a UI restoring the last preset at startup)."""
+    global current_preset_bank
+    try:
+        bank_names = gx_rpc.get_bank_names()
+        bank_name = gx_rpc.get_current_bank()
+        if bank_name in bank_names:
+            current_preset_bank = bank_names.index(bank_name)
+    except (OSError, GuitarixRPCError):
+        pass  # keep our own idea of the current bank
     new_bank = (current_preset_bank + delta) % 4
     set_preset_bank(new_bank)
 
@@ -127,6 +137,18 @@ def change_preset(delta):
     reset()  # Reset all effects: presets define their own effect chain
     midi_out.send(mido.Message('program_change', program=current_preset))
     logger.info(f"Changing preset by {delta} -> preset {current_preset}")
+
+def on_keypad_bank_selected(bank_index):
+    """KeyPad already sent the bank change itself; keep our current bank/preset in sync so
+    the preset encoder's click/rotation continue from it."""
+    global current_preset_bank, current_preset
+    current_preset_bank = bank_index
+    current_preset = 0
+
+def on_keypad_preset_selected(program):
+    """KeyPad already sent the Program Change itself; keep our current preset in sync."""
+    global current_preset
+    current_preset = program
 
 # --- BUTTON HANDLERS ---
 def handle_effect_toggle(idx):
@@ -328,7 +350,11 @@ def run():
 
     task_queue = queue.Queue()
     joystick = Joystick(ads, mcp1, lock=i2c_lock)
-    keypad = KeyPad(task_queue, midi_out, mcp2)
+    keypad = KeyPad(
+        task_queue, midi_out, mcp2,
+        on_bank_selected=on_keypad_bank_selected,
+        on_preset_selected=on_keypad_preset_selected,
+    )
     pedal = ExpressionPedal(midi_out, ads, lock=i2c_lock, channel=ADS.P2)
 
     threading.Thread(target=pipewire_link_thread, daemon=True).start()

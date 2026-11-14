@@ -171,9 +171,14 @@ not through the installed console script).
   The preset encoder's own push button is unrelated to this and is handled, like every other
   button, through `handle_effect_toggle` in `daemon.py`.
 - `guitarix_rpc.py`: `GuitarixRPC`, a minimal client for Guitarix's JSON-RPC control port
-  (`guitarix -p PORT`; plain newline-terminated JSON over a raw TCP socket, not HTTP). Only used
+  (`guitarix -p PORT`; plain newline-terminated JSON over a raw TCP socket, not HTTP). Used
   by `daemon.change_preset` to look up the current bank's preset list/count via
-  `get_parameter(["system.current_bank"/"system.current_preset"])` and `get_bank([bank_name])`.
+  `get_parameter(["system.current_bank"/"system.current_preset"])` and `get_bank([bank_name])`,
+  and by `daemon.change_bank` to start from the bank Guitarix actually has loaded (its index
+  in `banks()`, which is the order MIDI bank select numbers follow). Saving/restoring the
+  selected preset across reboots is done by guitariqx (the touchscreen UI), not here; the
+  keypad reports its selections through `on_bank_selected`/`on_preset_selected` so the
+  daemon's `current_preset_bank`/`current_preset` stay in sync.
   Reconnects lazily and backs off for `RECONNECT_BACKOFF` seconds after a failure so a
   never-started RPC server doesn't stall every rotation tick with a fresh connect attempt.
 - `keypad.py`: 4x4 matrix scan; digits accumulate into a preset number with a

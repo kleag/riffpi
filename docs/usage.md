@@ -61,6 +61,11 @@ A 4x4 matrix keypad selects presets directly and doubles as mouse buttons:
 Selecting a bank or preset resets all foot-switch effect states/LEDs, since Guitarix presets
 define their own effect chain.
 
+To get the last selected preset back after the pedal is unplugged or rebooted, switch on
+**Restore last preset** in [guitariqx](https://kleag.github.io/guitariqx/)'s menu (⋮): it saves
+the current preset on every change, including those made from the pedal, and loads it again
+when it connects to Guitarix.
+
 ## Joystick
 
 The analog joystick moves the mouse pointer — useful for dragging Guitarix's on-screen knobs to

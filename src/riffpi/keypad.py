@@ -4,7 +4,7 @@ import queue
 import threading
 import time
 from signal import pause
-from typing import List
+from typing import Callable, List, Optional
 
 import board
 import busio
@@ -54,8 +54,14 @@ class KeyPad:
         mcp: MCP23017,
         row_pins: List[int] = KEYPAD_ROW_PINS,
         col_pins: List[int] = KEYPAD_COL_PINS,
+        on_bank_selected: Optional[Callable[[int], None]] = None,
+        on_preset_selected: Optional[Callable[[int], None]] = None,
     ):
         self.task_queue = task_queue
+        # Called after a bank/preset selection has been sent to Guitarix, so the daemon can
+        # keep its own current bank/preset (used by the preset encoder) in sync.
+        self.on_bank_selected = on_bank_selected
+        self.on_preset_selected = on_preset_selected
         self.last_key = None
         self.midi_out = midi_out
         self.mcp = mcp
@@ -119,11 +125,20 @@ class KeyPad:
         self.midi_out.send(mido.Message('control_change', control=0, value=2))
         self.midi_out.send(mido.Message('control_change', control=32, value=value))
         self.midi_out.send(mido.Message('program_change', program=0))
+        if self.on_bank_selected:
+            self.on_bank_selected(value)
 
     def set_preset(self, value: int):
         logger.info(f"KeyPad.set_preset {value}")
+        if not 0 <= value <= 127:
+            # Out of the MIDI Program Change range: mido would raise ValueError, killing
+            # this thread, and it must not be persisted as the current preset either.
+            logger.warning(f"KeyPad: preset {value} out of range 0-127, ignored")
+            return
         self.task_queue.put(("reset", []))
         self.midi_out.send(mido.Message('program_change', program=value))
+        if self.on_preset_selected:
+            self.on_preset_selected(value)
 
     def keypad_thread(self):
         while True:

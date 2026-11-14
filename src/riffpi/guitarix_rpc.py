@@ -3,12 +3,13 @@
 
 Guitarix's JSON-RPC protocol is plain newline-terminated JSON over a raw TCP socket (not
 HTTP). This client only wraps the handful of read-only calls RiffPi needs to look up how
-many presets exist in the currently loaded bank:
+many presets exist in the currently loaded bank, and which bank that is:
 
 - `get_parameter(["system.current_bank"])` -> current bank name
 - `get_parameter(["system.current_preset"])` -> current preset name
 - `get_bank([bank_name])` -> `{"presets": [...]}, ordered the same way as MIDI Program
   Change numbers within that bank
+- `banks()` -> `[{"name": ...}, ...]`, ordered the same way as MIDI bank select numbers
 """
 import json
 import logging
@@ -89,6 +90,11 @@ class GuitarixRPC:
     def get_current_preset(self):
         result = self._call("get_parameter", ["system.current_preset"])
         return result["system.current_preset"]["value"]["system.current_preset"]
+
+    def get_bank_names(self):
+        """All bank names, in the engine's bank order: a MIDI bank select (CC32 = n) loads
+        the n-th of them (guitarix's PresetBanks::get_name(n))."""
+        return [bank["name"] for bank in self._call("banks")]
 
     def get_bank_presets(self, bank_name):
         """Ordered preset names for `bank_name` (order matches MIDI Program Change numbers)."""
